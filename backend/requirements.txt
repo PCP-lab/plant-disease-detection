@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic-settings
+onnxruntime
+numpy
+opencv-python-headless
+pillow
+firebase-admin
+pytest
+httpx

@@ -1,0 +1,7 @@
+roboflow
+rfdetr>=1.4
+onnx
+onnxruntime
+numpy
+pycocotools
+python-dotenv

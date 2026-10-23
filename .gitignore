@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Secrets
+.env
+service-account*.json
+*-firebase-adminsdk-*.json
+
+# Datasets, checkpoints, models
+training/datasets/
+training/runs/
+*.pt
+*.pth
+*.onnx
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
