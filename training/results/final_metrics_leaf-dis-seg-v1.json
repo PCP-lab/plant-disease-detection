@@ -1,0 +1,187 @@
+{
+ "data": "leaf-dis-seg-v1",
+ "test_images": 76,
+ "images_with": {
+  "leaf_spot": 62,
+  "powdery_mildew": 17
+ },
+ "YOLO26x-seg": {
+  "kind": "yolo",
+  "ms_per_image_gpu": 118.2,
+  "pixel": {
+   "background": {
+    "precision": 0.9027760313913313,
+    "recall": 0.9616900957414486,
+    "f1_dice": 0.9313022697783613,
+    "iou": 0.8714365563265652
+   },
+   "leaf": {
+    "precision": 0.9698453522451256,
+    "recall": 0.9466076715146632,
+    "f1_dice": 0.9580856292704497,
+    "iou": 0.9195435404155107
+   },
+   "leaf_spot": {
+    "precision": 0.8479036739865312,
+    "recall": 0.8542830063015523,
+    "f1_dice": 0.8510813861435621,
+    "iou": 0.7407673405924191
+   },
+   "powdery_mildew": {
+    "precision": 0.766974412539814,
+    "recall": 0.384698969493243,
+    "f1_dice": 0.5123922645687801,
+    "iou": 0.34444044109534716
+   },
+   "accuracy": 0.9424954339077598,
+   "miou_fg": 0.6682504407010922,
+   "mf1_fg": 0.7738530933275972
+  },
+  "image": {
+   "leaf_spot": {
+    "presence_precision": 0.9838709677419355,
+    "presence_recall": 0.9838709677419355,
+    "presence_f1": 0.9838709677419355,
+    "presence_tp_fp_fn": [
+     61,
+     1,
+     1
+    ],
+    "coverage_mae_pp": 0.19230545908030047,
+    "coverage_rmse_pp": 0.39267735518062585,
+    "coverage_bias_pp": 0.0717389253485035,
+    "coverage_mae_pp_images_with_disease": 0.23513539010237297,
+    "coverage_bias_pp_images_with_disease": 0.08734415520533152,
+    "r2": 0.9582842905315468,
+    "ccc": 0.9805430960278618,
+    "severity_accuracy": 0.9868421052631579
+   },
+   "powdery_mildew": {
+    "presence_precision": 0.8125,
+    "presence_recall": 0.7647058823529411,
+    "presence_f1": 0.787878787878788,
+    "presence_tp_fp_fn": [
+     13,
+     3,
+     4
+    ],
+    "coverage_mae_pp": 1.3984974562484347,
+    "coverage_rmse_pp": 6.636974266732679,
+    "coverage_bias_pp": -1.1008222861028516,
+    "coverage_mae_pp_images_with_disease": 6.130268631094346,
+    "coverage_bias_pp_images_with_disease": -5.0431608052996415,
+    "r2": 0.483134439467381,
+    "ccc": 0.566307835295446,
+    "severity_accuracy": 0.9342105263157895
+   }
+  },
+  "instance_test": {
+   "box": {
+    "precision": 0.8022512658743574,
+    "recall": 0.7326512048302707,
+    "map50": 0.781408148493958,
+    "map50_95": 0.5777380913491034
+   },
+   "mask": {
+    "precision": 0.793553946096068,
+    "recall": 0.7063383654120406,
+    "map50": 0.7480041876752673,
+    "map50_95": 0.5036099210592775
+   },
+   "per_class_mask": {
+    "leaf": {
+     "precision": 0.9068457378590787,
+     "recall": 0.6701692936368944,
+     "f1": 0.7707474633290443,
+     "map50": 0.765775151120472,
+     "map50_95": 0.64214187742496
+    },
+    "leaf_spot": {
+     "precision": 0.8444541962867471,
+     "recall": 0.7273846153846154,
+     "f1": 0.7815597709065667,
+     "map50": 0.8168559433839914,
+     "map50_95": 0.42138426861532874
+    },
+    "powdery_mildew": {
+     "precision": 0.6293619041423779,
+     "recall": 0.7214611872146118,
+     "f1": 0.6722718755038096,
+     "map50": 0.6613814685213386,
+     "map50_95": 0.4473036171375438
+    }
+   }
+  }
+ },
+ "BioTrove+head": {
+  "kind": "semseg",
+  "ms_per_image_gpu": 41.2,
+  "pixel": {
+   "background": {
+    "precision": 0.9428558255427695,
+    "recall": 0.9480806284813108,
+    "f1_dice": 0.9454610087457446,
+    "iou": 0.8965633481425139
+   },
+   "leaf": {
+    "precision": 0.9563147036377737,
+    "recall": 0.9664827968673457,
+    "f1_dice": 0.9613718649149467,
+    "iou": 0.9256170061638277
+   },
+   "leaf_spot": {
+    "precision": 0.8046171340966949,
+    "recall": 0.882840650989634,
+    "f1_dice": 0.8419158342701876,
+    "iou": 0.7269901956906742
+   },
+   "powdery_mildew": {
+    "precision": 0.5473898266149453,
+    "recall": 0.18069241023458052,
+    "f1_dice": 0.271697844290041,
+    "iou": 0.15720506011776153
+   },
+   "accuracy": 0.94776577698557,
+   "miou_fg": 0.6032707539907545,
+   "mf1_fg": 0.6916618478250585
+  },
+  "image": {
+   "leaf_spot": {
+    "presence_precision": 0.9393939393939394,
+    "presence_recall": 1.0,
+    "presence_f1": 0.96875,
+    "presence_tp_fp_fn": [
+     62,
+     4,
+     0
+    ],
+    "coverage_mae_pp": 0.4130748686043411,
+    "coverage_rmse_pp": 1.1678167226105143,
+    "coverage_bias_pp": 0.2547514585920803,
+    "coverage_mae_pp_images_with_disease": 0.5042336971258302,
+    "coverage_bias_pp_images_with_disease": 0.3101598396914459,
+    "r2": 0.6310416873780633,
+    "ccc": 0.8533235536527303,
+    "severity_accuracy": 0.9605263157894737
+   },
+   "powdery_mildew": {
+    "presence_precision": 0.9166666666666666,
+    "presence_recall": 0.6470588235294118,
+    "presence_f1": 0.7586206896551724,
+    "presence_tp_fp_fn": [
+     11,
+     1,
+     6
+    ],
+    "coverage_mae_pp": 2.000012360458592,
+    "coverage_rmse_pp": 8.814441243911409,
+    "coverage_bias_pp": -1.5103832931778414,
+    "coverage_mae_pp_images_with_disease": 8.90298517170432,
+    "coverage_bias_pp_images_with_disease": -6.790548338670322,
+    "r2": 0.08835259046660904,
+    "ccc": 0.18992668028738283,
+    "severity_accuracy": 0.9210526315789473
+   }
+  }
+ }
+}

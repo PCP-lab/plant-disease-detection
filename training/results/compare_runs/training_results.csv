@@ -1,0 +1,4 @@
+run,trained on,start,imgsz,batch,lr0,overlap_mask,copy_paste,erasing,epochs planned,epochs trained,best epoch,train hours,val mask mAP50,val mask mAP50-95,val box mAP50,val box mAP50-95,val mask P,val mask R,final train seg_loss,final val seg_loss
+labelassist-yolo26x-seg-v1_data-powdery-mildew-mbjv6-v2,powdery-mildew-mbjv6-v2-yolo26,best.pt,1024,8,0.001429,False,0.3,0.4,200,115,55,0.8,0.55894,0.41116,0.58496,0.43979,0.85683,0.46374,1.66123,2.18851
+yolo26x-seg_data-v1,leaf-dis-seg-v1-yolo,yolo26x-seg.pt,1024,8,0.001429,True,0.0,0.4,150,50,39,2.7,0.65199,0.45066,0.67696,0.4886,0.71998,0.6364,1.83589,1.87566
+yolo26x-seg_data-v2,lds_v1-v2-yolo,yolo26x-seg.pt,1024,8,0.001429,True,0.0,0.4,150,85,74,7.1,0.63345,0.3859,0.68056,0.44992,0.72871,0.58799,1.99737,2.26652

@@ -1,7 +1,17 @@
 roboflow
+ultralytics
 rfdetr>=1.4
 onnx
+onnxslim
 onnxruntime
 numpy
 pycocotools
 python-dotenv
+pyyaml
+matplotlib
+pillow
+jupyterlab
+timm
+huggingface_hub
+scipy
+scikit-learn

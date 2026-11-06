@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Local weather for the disease-risk forecast and management tips. Coarse alone isn't enough:
+         Android won't use GPS for an approximate-only app, so with no Wi-Fi/cell location (in a field,
+         or on an emulator) there'd be no fix. Declaring FINE lets the user pick precise or approximate. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <application
         android:label="leaf_disease_app"
         android:name="${applicationName}"

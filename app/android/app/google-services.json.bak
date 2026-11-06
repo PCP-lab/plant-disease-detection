@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "636095579619",
+    "project_id": "leaf-dis-seg",
+    "storage_bucket": "leaf-dis-seg.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:636095579619:android:430bd862b71dddb695ccd6",
+        "android_client_info": {
+          "package_name": "com.pcpl.leaf_disease_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "636095579619-99mbhvrvi4j7f4kafj8en0eib1gjk6et.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBF6Fnye3kAEeiKhB49Ib6QEzonzowP3fE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "636095579619-99mbhvrvi4j7f4kafj8en0eib1gjk6et.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

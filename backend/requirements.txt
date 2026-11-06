@@ -7,5 +7,6 @@ numpy
 opencv-python-headless
 pillow
 firebase-admin
-pytest
+# Weather (Open-Meteo) and LLM calls; also used by FastAPI's TestClient.
 httpx
+pytest

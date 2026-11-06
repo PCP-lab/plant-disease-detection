@@ -1,0 +1,9 @@
+# Without this file gcloud uses .gitignore, which excludes *.onnx, so the model would be left out.
+.gcloudignore
+.venv/
+__pycache__/
+.pytest_cache/
+tests/
+.env
+service-account*.json
+*-firebase-adminsdk-*.json

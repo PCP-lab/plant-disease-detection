@@ -1,0 +1,5 @@
+# Local GPU prototype (NVIDIA + CUDA). After installing requirements.txt, swap the CPU runtime for the GPU one:
+#   pip uninstall -y onnxruntime && pip install -r requirements-gpu.txt
+# (onnxruntime and onnxruntime-gpu must not be installed together.) The [cuda,cudnn] extras pull the CUDA and
+# cuDNN runtimes as pip wheels, so no system CUDA install is needed. Cloud Run / CPU machines skip this file.
+onnxruntime-gpu[cuda,cudnn]

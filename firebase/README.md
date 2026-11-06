@@ -10,7 +10,7 @@
    ```
 
 ## Data layout
-- Firestore: `users/{uid}/scans/{scanId}` → `created_at, image_path, overlay_path, status, primary, leaves, model_version`
-- Storage: `scans/{uid}/{scanId}/original.jpg`, `scans/{uid}/{scanId}/overlay.png`
+- Firestore: `users/{uid}/scans/{scanId}` → `created_at, image_path, overlay_path, download_tokens {image, overlay}, status, primary, leaves, model_version`
+- Storage: `scans/{uid}/{scanId}/original.jpg`, `scans/{uid}/{scanId}/overlay.jpg`
 
 Only the backend writes, using the Admin SDK (which bypasses rules). Users can read and delete only their own scans.
