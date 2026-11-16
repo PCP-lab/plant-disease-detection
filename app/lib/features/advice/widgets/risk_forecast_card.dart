@@ -6,15 +6,9 @@ import '../../../shared/api_client.dart';
 import '../../../shared/location.dart';
 import '../../../shared/models/advice.dart';
 import '../../../shared/models/scan_result.dart';
+import '../../scan/widgets/coverage_card.dart' show leafSpotSeriesColor, mildewSeriesColor;
 import '../advice_providers.dart';
 import 'advice_card.dart';
-
-/// Chart series colours per disease. Validated (lightness, chroma, colour-blind separation, contrast)
-/// against the light and dark surfaces; the lavender used on the coverage card reads too grey for a line.
-Color mildewSeriesColor(Brightness b) =>
-    b == Brightness.dark ? const Color(0xFF9378E0) : const Color(0xFF7B5FC9);
-Color leafSpotSeriesColor(Brightness b) =>
-    b == Brightness.dark ? const Color(0xFFCC7620) : const Color(0xFFB45F06);
 
 /// Thresholds matching backend/app/weather.py risk_level.
 const _mediumRisk = 34.0;

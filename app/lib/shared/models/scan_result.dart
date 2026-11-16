@@ -61,6 +61,37 @@ class LeafCoverage {
   );
 }
 
+/// Photo check from the backend: is this one dominant leaf, the kind of photo the model is validated on?
+class Framing {
+  const Framing({
+    required this.ok,
+    this.issue,
+    required this.leafFrac,
+    this.dominance,
+  });
+
+  final bool ok;
+
+  /// `several_leaves` (no clear main leaf) or `small_leaf` (the leaf fills too little of the photo).
+  final String? issue;
+
+  /// The main leaf's share of the photo (0–1).
+  final double leafFrac;
+
+  /// Main leaf area / second-largest leaf area; null when there is only one leaf.
+  final double? dominance;
+
+  static Framing? fromJson(Object? json) {
+    if (json is! Map) return null;
+    return Framing(
+      ok: json['ok'] as bool? ?? true,
+      issue: json['issue'] as String?,
+      leafFrac: (json['leaf_frac'] as num? ?? 0).toDouble(),
+      dominance: (json['dominance'] as num?)?.toDouble(),
+    );
+  }
+}
+
 class ScanResult {
   const ScanResult({
     required this.id,
@@ -69,6 +100,7 @@ class ScanResult {
     required this.status,
     required this.primary,
     required this.leaves,
+    this.framing,
     this.imageUrl,
     this.overlayUrl,
     this.imagePath,
@@ -85,6 +117,9 @@ class ScanResult {
   /// Coverage of the largest leaf; null when no leaf was detected.
   final LeafCoverage? primary;
   final List<LeafCoverage> leaves;
+
+  /// Photo check; null for no leaf and for scans saved before the check existed.
+  final Framing? framing;
 
   /// Signed URLs, set when the scan comes from the API.
   final String? imageUrl;
@@ -108,6 +143,7 @@ class ScanResult {
         ? null
         : LeafCoverage.fromJson(json['primary'] as Map<String, dynamic>),
     leaves: _parseLeaves(json['leaves']),
+    framing: Framing.fromJson(json['framing']),
     imageUrl: json['image_url'] as String?,
     overlayUrl: json['overlay_url'] as String?,
     imageBytes: _decodeBase64(json['image_jpeg_b64']),
@@ -131,6 +167,7 @@ class ScanResult {
               Map<String, dynamic>.from(data['primary'] as Map),
             ),
       leaves: _parseLeaves(data['leaves']),
+      framing: Framing.fromJson(data['framing']),
       imagePath: data['image_path'] as String?,
       overlayPath: data['overlay_path'] as String?,
     );

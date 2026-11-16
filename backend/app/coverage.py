@@ -31,10 +31,11 @@ def filter_predictions(predictions: list[dict]) -> list[dict]:
 
 
 def compute_coverage(predictions: list[dict]) -> dict:
-    """→ {"status", "primary", "leaves"}; leaves sorted largest first, primary = leaves[0]."""
+    """→ {"status", "primary", "leaves", "framing"}. primary = the largest leaf; "leaves" is just [primary] (kept as a
+    list for older app builds). Every leaf still shapes the regions (overlaps, lesions on edges) and the photo check."""
     leaf_masks = [p["mask"] for p in predictions if p["class_name"] == "leaf" and p["mask"].any()]
     if not leaf_masks:
-        return {"status": "no_leaf_detected", "primary": None, "leaves": []}
+        return {"status": "no_leaf_detected", "primary": None, "leaves": [], "framing": None}
 
     shape = leaf_masks[0].shape
     disease_union = {d: np.zeros(shape, bool) for d in DISEASE_CLASSES}
@@ -44,7 +45,8 @@ def compute_coverage(predictions: list[dict]) -> dict:
     any_disease = disease_union["powdery_mildew"] | disease_union["leaf_spot"]
 
     leaves = []
-    for leaf in leaf_regions(leaf_masks, any_disease):
+    regions = leaf_regions(leaf_masks, any_disease)
+    for leaf in regions[:1]:  # the main leaf only
         leaf_px = int(leaf.sum())
         pct = {d: 100 * int((disease_union[d] & leaf).sum()) / leaf_px for d in DISEASE_CLASSES}
         diseased_pct = 100 * int((any_disease & leaf).sum()) / leaf_px
@@ -56,7 +58,48 @@ def compute_coverage(predictions: list[dict]) -> dict:
                 "severity": {d: severity(pct[d]) for d in DISEASE_CLASSES},
             }
         )
-    return {"status": "ok", "primary": leaves[0], "leaves": leaves}
+    return {"status": "ok", "primary": leaves[0], "leaves": leaves, "framing": framing_check(regions)}
+
+
+def main_leaf_keep_mask(predictions: list[dict], margin: float) -> np.ndarray | None:
+    """Pixels to keep when isolating the main leaf: its region (holes filled, plus the lesions on its edge), grown by
+    margin × the image's long side. None if there's no leaf."""
+    leaf_masks = [p["mask"] for p in predictions if p["class_name"] == "leaf" and p["mask"].any()]
+    if not leaf_masks:
+        return None
+    any_disease = np.zeros(leaf_masks[0].shape, bool)
+    for p in predictions:
+        if p["class_name"] in DISEASE_CLASSES:
+            any_disease |= p["mask"]
+    main = leaf_regions(leaf_masks, any_disease)[0]
+    r = max(1, round(margin * max(main.shape)))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
+    return cv2.dilate(main.astype(np.uint8), kernel).astype(bool)
+
+
+def framing_check(regions: list[np.ndarray]) -> dict:
+    """Is this the kind of photo the model was validated on: one dominant leaf filling a good part of the frame?
+    regions: leaf regions, largest first (leaf_regions). The result is for the largest leaf either way; this only
+    tells the user when to retake.
+      several_leaves: the second-largest leaf is at least settings.framing_max_second_ratio of the main one, so a
+                      background leaf could be the one reported.
+      small_leaf:     the main leaf covers less than settings.framing_min_leaf_frac of the photo (few pixels per lesion).
+    """
+    main = int(regions[0].sum())
+    leaf_frac = main / regions[0].size
+    second = int(regions[1].sum()) if len(regions) > 1 else 0
+    if second >= settings.framing_max_second_ratio * main:
+        issue = "several_leaves"
+    elif leaf_frac < settings.framing_min_leaf_frac:
+        issue = "small_leaf"
+    else:
+        issue = None
+    return {
+        "ok": issue is None,
+        "issue": issue,
+        "leaf_frac": round(leaf_frac, 3),
+        "dominance": round(main / second, 2) if second else None,  # None: only one leaf
+    }
 
 
 def fill_holes(mask: np.ndarray) -> np.ndarray:

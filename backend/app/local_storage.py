@@ -46,6 +46,7 @@ def save_scan(uid: str, image_bytes: bytes, overlay_jpeg: bytes, result: dict, m
         "status": result["status"],
         "primary": result["primary"],
         "leaves": result["leaves"],
+        "framing": result.get("framing"),
     }
     (d / "scan.json").write_text(json.dumps(doc))
     return _to_response(uid, scan_id, doc)

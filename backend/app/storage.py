@@ -56,6 +56,7 @@ def _to_response(scan_id: str, doc: dict) -> dict:
         "status": doc["status"],
         "primary": doc.get("primary"),
         "leaves": doc.get("leaves", []),
+        "framing": doc.get("framing"),  # absent on scans saved before the photo check
         **urls,
     }
 
@@ -69,6 +70,7 @@ def save_scan(uid: str, image_bytes: bytes, overlay_jpeg: bytes, result: dict, m
         "status": result["status"],
         "primary": result["primary"],
         "leaves": result["leaves"],
+        "framing": result.get("framing"),
     }
     if settings.use_cloud_storage:
         bucket = _bucket()

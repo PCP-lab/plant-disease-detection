@@ -38,6 +38,21 @@ class Settings(BaseSettings):
     severity_mild_max: float = 5.0
     severity_moderate_max: float = 25.0
 
+    # Photo check ("framing"): the model is validated on photos with one dominant leaf (training/15_combined_focal_test_report).
+    # Warn when the main leaf covers less than this share of the photo...
+    framing_min_leaf_frac: float = 0.15
+    # ...or when the second-largest leaf is at least this big relative to the main leaf (i.e. no clear main leaf).
+    framing_max_second_ratio: float = 0.5
+    # Smallest crop side the app may send, as a share of the photo.
+    min_crop_frac: float = 0.05
+
+    # Analyse only the main leaf: a first model pass finds it, everything else is greyed out, and the model runs again
+    # on that image, so leaves in the background (e.g. in the corners of the user's crop box) are never considered.
+    # Costs a second inference per scan. Scored the same as a single pass on the focal test set (training/13).
+    isolate_main_leaf: bool = True
+    # Kept around the main leaf so its edge isn't cut, as a share of the photo's long side.
+    isolate_margin: float = 0.01
+
     # AI management tips (POST /scans/{id}/advice). Any OpenAI-compatible chat API: Ollama by default
     # (free, local, open-weight models); Groq / OpenRouter / vLLM / LM Studio work by changing these.
     llm_base_url: str = "http://localhost:11434/v1"

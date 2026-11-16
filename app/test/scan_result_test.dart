@@ -30,6 +30,35 @@ void main() {
     expect(scan.createdAt.toUtc(), DateTime.utc(2026, 10, 26, 10));
   });
 
+  test('parses the photo check (framing)', () {
+    final base = {
+      'id': 'f',
+      'created_at': '2026-11-13T10:00:00Z',
+      'model_version': 'v2',
+      'status': 'ok',
+      'primary': null,
+      'leaves': [],
+    };
+    final warn = ScanResult.fromJson({
+      ...base,
+      'framing': {'ok': false, 'issue': 'several_leaves', 'leaf_frac': 0.31, 'dominance': 1.2},
+    }).framing!;
+    expect(warn.ok, isFalse);
+    expect(warn.issue, 'several_leaves');
+    expect(warn.leafFrac, 0.31);
+    expect(warn.dominance, 1.2);
+
+    final single = ScanResult.fromJson({
+      ...base,
+      'framing': {'ok': true, 'issue': null, 'leaf_frac': 0.6, 'dominance': null},
+    }).framing!;
+    expect(single.ok, isTrue);
+    expect(single.dominance, isNull);
+
+    // Scans saved before the check existed have no framing.
+    expect(ScanResult.fromJson(base).framing, isNull);
+  });
+
   test('parses no_leaf_detected', () {
     final scan = ScanResult.fromJson({
       'id': 'x',

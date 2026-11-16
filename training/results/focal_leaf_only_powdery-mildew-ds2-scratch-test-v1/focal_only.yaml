@@ -1,0 +1,7 @@
+names:
+- leaf
+- leaf_spot
+- powdery_mildew
+path: c:\Users\bp67339\PCPL\plant disease detection\training\results\focal_leaf_only_powdery-mildew-ds2-scratch-test-v1\focal_only_yolo
+train: images
+val: images

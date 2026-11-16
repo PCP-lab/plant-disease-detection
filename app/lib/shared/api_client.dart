@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' show Rect;
 
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -43,8 +44,9 @@ class ApiClient {
 
   final Dio _dio;
 
-  /// Uploads a leaf photo and returns the coverage result.
-  Future<ScanResult> createScan(XFile image) async {
+  /// Uploads a leaf photo and returns the coverage result. [crop] is the box the user drew around the leaf,
+  /// as fractions (0–1) of the upright photo; the backend crops to it before analysing.
+  Future<ScanResult> createScan(XFile image, {Rect? crop}) async {
     // Bytes rather than a path so this also works on web.
     final form = FormData.fromMap({
       'image': MultipartFile.fromBytes(
@@ -52,6 +54,10 @@ class ApiClient {
         filename: image.name,
         contentType: DioMediaType.parse(image.mimeType ?? 'image/jpeg'),
       ),
+      if (crop != null)
+        'crop': [crop.left, crop.top, crop.right, crop.bottom]
+            .map((v) => v.clamp(0.0, 1.0).toStringAsFixed(4))
+            .join(','),
     });
     final res = await _dio.post<Map<String, dynamic>>('/scans', data: form);
     return ScanResult.fromJson(res.data!);

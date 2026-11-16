@@ -7,20 +7,17 @@ import 'package:image_picker/image_picker.dart';
 import '../../config.dart';
 import '../../shared/api_client.dart';
 import '../auth/auth_providers.dart';
+import 'camera_screen.dart';
+import 'frame_leaf_screen.dart';
 import 'scan_providers.dart';
 
 /// Home: take a photo or pick one from the gallery, then upload it.
 class ScanScreen extends ConsumerWidget {
   const ScanScreen({super.key});
 
-  Future<void> _pickAndUpload(
-    BuildContext context,
-    WidgetRef ref,
-    ImageSource source,
-  ) async {
-    final XFile? image;
+  Future<XFile?> _pick(BuildContext context, ImageSource source) async {
     try {
-      image = await ImagePicker().pickImage(
+      return await ImagePicker().pickImage(
         source: source,
         maxWidth: 2048,
         maxHeight: 2048,
@@ -30,16 +27,58 @@ class ScanScreen extends ConsumerWidget {
       if (context.mounted) {
         _snack(context, 'Could not open the camera/gallery: $e');
       }
-      return;
+      return null;
     }
-    if (image == null) return;
+  }
 
-    final result = await ref.read(scanUploadProvider.notifier).upload(image);
-    if (!context.mounted) return;
-    if (result.hasError) {
-      _snack(context, describeError(result.error!));
-    } else {
-      context.push('/result');
+  /// Photo (in-app camera with a guide box on Android/iOS, else image_picker) → "box the leaf" → upload.
+  /// "Retake" on the box screen goes back to the camera / gallery.
+  Future<void> _scan(BuildContext context, WidgetRef ref, {required bool camera}) async {
+    final nav = Navigator.of(context);
+    while (true) {
+      XFile? image;
+      var start = defaultLeafBox;
+      if (camera && !kIsWeb) {
+        final out = await nav.push<CameraOutcome>(
+          MaterialPageRoute(builder: (_) => const CameraScreen()),
+        );
+        if (out == null || !context.mounted) return;
+        if (out.file != null) {
+          image = out.file;
+          start = out.guide!;
+        } else {
+          image = await _pick(
+            context,
+            out.fallback == CameraFallback.gallery ? ImageSource.gallery : ImageSource.camera,
+          );
+        }
+      } else {
+        image = await _pick(context, camera ? ImageSource.camera : ImageSource.gallery);
+      }
+      if (image == null || !context.mounted) return;
+
+      final bytes = await image.readAsBytes();
+      if (!context.mounted) return;
+      final box = await nav.push<Rect>(
+        MaterialPageRoute(
+          builder: (_) => FrameLeafScreen(
+            bytes: bytes,
+            initialBox: start,
+            retakeLabel: camera ? 'Retake' : 'Choose another',
+          ),
+        ),
+      );
+      if (!context.mounted) return;
+      if (box == null) continue; // retake / choose another
+
+      final result = await ref.read(scanUploadProvider.notifier).upload(image, crop: box);
+      if (!context.mounted) return;
+      if (result.hasError) {
+        _snack(context, describeError(result.error!));
+      } else {
+        context.push('/result');
+      }
+      return;
     }
   }
 
@@ -101,8 +140,8 @@ class ScanScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Photograph a single leaf against a plain background. '
-                          "We'll measure how much of it is covered by powdery mildew "
+                          'Photograph one leaf so it fills most of the frame, then fit the box '
+                          "around it. We'll measure how much of it is covered by powdery mildew "
                           'and leaf spot.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
@@ -111,8 +150,7 @@ class ScanScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 32),
                         FilledButton.icon(
-                          onPressed: () =>
-                              _pickAndUpload(context, ref, ImageSource.camera),
+                          onPressed: () => _scan(context, ref, camera: true),
                           icon: const Icon(Icons.photo_camera),
                           label: Text(
                             kIsWeb ? 'Take or choose a photo' : 'Take a photo',
@@ -123,8 +161,7 @@ class ScanScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton.icon(
-                          onPressed: () =>
-                              _pickAndUpload(context, ref, ImageSource.gallery),
+                          onPressed: () => _scan(context, ref, camera: false),
                           icon: const Icon(Icons.photo_library_outlined),
                           label: const Text('Choose from gallery'),
                           style: OutlinedButton.styleFrom(

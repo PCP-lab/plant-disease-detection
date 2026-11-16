@@ -16,6 +16,15 @@ class LeafCoverage(BaseModel):
     severity: dict[str, Severity]
 
 
+class Framing(BaseModel):
+    """Photo check: is this one dominant leaf, the kind of photo the model is validated on?"""
+
+    ok: bool
+    issue: Literal["several_leaves", "small_leaf"] | None
+    leaf_frac: float  # main leaf's share of the photo
+    dominance: float | None  # main leaf area / second-largest leaf area; None if only one leaf
+
+
 class ScanResult(BaseModel):
     id: str
     created_at: datetime
@@ -23,6 +32,7 @@ class ScanResult(BaseModel):
     status: Literal["ok", "no_leaf_detected"]
     primary: LeafCoverage | None
     leaves: list[LeafCoverage]
+    framing: Framing | None = None  # None for no leaf, and for scans saved before the check existed
     # Null when there's no Cloud Storage bucket: the app shows its on-device copies instead.
     image_url: str | None = None
     overlay_url: str | None = None

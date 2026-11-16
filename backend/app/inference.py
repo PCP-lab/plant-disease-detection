@@ -22,10 +22,56 @@ RFDETR_DEFAULT_CLASSES = ["_superclass", "leaf", "leaf_spot", "powdery_mildew"]
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], np.float32)
 NMS_IOU = 0.7
+# Leaf masks: a box side counts as "cut" when the full mask covers at least this share of the line just outside it;
+# cut sides are widened by this fraction of the box size (training/14 + leaf crop experiment: no flat cuts left,
+# leaf IoU 0.975 -> 0.981 on the from-scratch test photos, no loss on the 49 pre-labelled ones).
+LEAF_CUT_FRAC = 0.15
+LEAF_CROP_PAD = 0.25
 
 
 def _sigmoid(x: np.ndarray) -> np.ndarray:
     return 1 / (1 + np.exp(-x))
+
+
+def _box_px(box: np.ndarray, w: int, h: int) -> tuple[int, int, int, int]:
+    x1, y1, x2, y2 = np.clip(np.round(box), 0, [w, h, w, h]).astype(int)
+    return int(x1), int(y1), int(x2), int(y2)
+
+
+def crop_to_box(mask: np.ndarray, box: np.ndarray) -> np.ndarray:
+    """YOLO-seg masks are only valid inside the instance's box (Ultralytics crops them the same way)."""
+    h, w = mask.shape
+    x1, y1, x2, y2 = _box_px(box, w, h)
+    out = np.zeros_like(mask)
+    out[y1:y2, x1:x2] = mask[y1:y2, x1:x2]
+    return out
+
+
+def crop_leaf(mask: np.ndarray, box: np.ndarray) -> np.ndarray:
+    """Box crop for leaves, but where the predicted box is too short (common for big leaves, especially ones running
+    off the photo) the plain crop cuts the leaf along a straight line. Widen only the sides the mask clearly continues
+    past, then keep only the mask parts connected to the box so a neighbouring leaf isn't pulled in."""
+    h, w = mask.shape
+    x1, y1, x2, y2 = _box_px(box, w, h)
+    if x2 - x1 < 2 or y2 - y1 < 2:
+        return crop_to_box(mask, box)
+    bw, bh = x2 - x1, y2 - y1
+    ex1, ey1, ex2, ey2 = x1, y1, x2, y2
+    if y1 > 0 and mask[y1 - 1, x1:x2].mean() >= LEAF_CUT_FRAC:
+        ey1 = max(0, int(y1 - LEAF_CROP_PAD * bh))
+    if y2 < h and mask[y2, x1:x2].mean() >= LEAF_CUT_FRAC:
+        ey2 = min(h, int(y2 + LEAF_CROP_PAD * bh))
+    if x1 > 0 and mask[y1:y2, x1 - 1].mean() >= LEAF_CUT_FRAC:
+        ex1 = max(0, int(x1 - LEAF_CROP_PAD * bw))
+    if x2 < w and mask[y1:y2, x2].mean() >= LEAF_CUT_FRAC:
+        ex2 = min(w, int(x2 + LEAF_CROP_PAD * bw))
+    if (ex1, ey1, ex2, ey2) == (x1, y1, x2, y2):
+        return crop_to_box(mask, box)
+    widened = np.zeros_like(mask)
+    widened[ey1:ey2, ex1:ex2] = mask[ey1:ey2, ex1:ex2]
+    _, labels = cv2.connectedComponents(widened.astype(np.uint8))
+    inside = np.unique(labels[y1:y2, x1:x2])
+    return np.isin(labels, inside[inside > 0])
 
 
 def _providers() -> list[str]:
@@ -129,10 +175,9 @@ class SegmentationModel:
         results = []
         for logits, box, score, c in zip(mask_logits, scaled, scores[keep], cls[keep]):
             m = cv2.resize(logits[py0:py1, px0:px1], (w0, h0), interpolation=cv2.INTER_LINEAR) > 0  # sigmoid > 0.5
-            x1, y1, x2, y2 = np.clip(np.round(box), 0, [w0, h0, w0, h0]).astype(int)
-            cropped = np.zeros_like(m)
-            cropped[y1:y2, x1:x2] = m[y1:y2, x1:x2]
-            results.append({"class_name": self._name(int(c)), "confidence": float(score), "mask": cropped})
+            name = self._name(int(c))
+            cropped = crop_leaf(m, box) if name == "leaf" else crop_to_box(m, box)
+            results.append({"class_name": name, "confidence": float(score), "mask": cropped})
         return results
 
     # --- RF-DETR-Seg ----------------------------------------------------------------------------

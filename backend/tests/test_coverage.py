@@ -58,7 +58,7 @@ def test_lesion_notch_on_leaf_edge_is_counted():
 
 def test_no_leaf_detected():
     result = compute_coverage([pred("leaf_spot", rect_mask(SHAPE, 0, 5, 0, 5))])
-    assert result == {"status": "no_leaf_detected", "primary": None, "leaves": []}
+    assert result == {"status": "no_leaf_detected", "primary": None, "leaves": [], "framing": None}
     assert compute_coverage([pred("leaf", np.zeros(SHAPE, bool))])["status"] == "no_leaf_detected"
 
 
@@ -68,9 +68,32 @@ def test_primary_leaf_is_largest():
     result = compute_coverage(
         [pred("leaf", small), pred("leaf", big), pred("leaf_spot", rect_mask(SHAPE, 0, 10, 0, 5))]
     )
-    assert len(result["leaves"]) == 2
-    assert result["primary"]["leaf_spot_pct"] == 0
-    assert result["leaves"][1]["leaf_spot_pct"] == 50
+    assert result["leaves"] == [result["primary"]]  # only the main leaf is reported
+    assert result["primary"]["leaf_spot_pct"] == 0  # the spot is on the small leaf, not the main one
+
+
+def test_framing_one_dominant_leaf_is_ok():
+    big = rect_mask(SHAPE, 10, 90, 10, 90)  # 64 % of the photo
+    small = rect_mask(SHAPE, 0, 5, 0, 5)  # a corner of a background leaf
+    framing = compute_coverage([pred("leaf", big), pred("leaf", small)])["framing"]
+    assert framing == {"ok": True, "issue": None, "leaf_frac": 0.64, "dominance": 256.0}
+
+
+def test_framing_single_leaf_has_no_dominance():
+    framing = compute_coverage([pred("leaf", rect_mask(SHAPE, 0, 50, 0, 50))])["framing"]
+    assert framing["ok"] and framing["dominance"] is None
+
+
+def test_framing_flags_two_similar_leaves():
+    a = rect_mask(SHAPE, 0, 50, 0, 50)  # 2500 px
+    b = rect_mask(SHAPE, 50, 100, 50, 90)  # 2000 px: 0.8 of the main leaf
+    framing = compute_coverage([pred("leaf", a), pred("leaf", b)])["framing"]
+    assert framing["ok"] is False and framing["issue"] == "several_leaves" and framing["dominance"] == 1.25
+
+
+def test_framing_flags_a_small_leaf():
+    framing = compute_coverage([pred("leaf", rect_mask(SHAPE, 40, 60, 40, 60))])["framing"]  # 4 % of the photo
+    assert framing["ok"] is False and framing["issue"] == "small_leaf"
 
 
 def test_severity_bands():

@@ -27,9 +27,6 @@ class _ScanResultViewState extends State<ScanResultView> {
     final theme = Theme.of(context);
     final noLeaf =
         scan.status == ScanStatus.noLeafDetected || scan.primary == null;
-    final otherLeaves = scan.leaves.length > 1
-        ? scan.leaves
-        : const <LeafCoverage>[];
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -100,34 +97,9 @@ class _ScanResultViewState extends State<ScanResultView> {
                     ),
                   )
                 else ...[
-                  CoverageCard(
-                    coverage: scan.primary!,
-                    title: otherLeaves.isEmpty
-                        ? 'Leaf coverage'
-                        : 'Largest leaf',
-                  ),
-                  if (otherLeaves.isNotEmpty)
-                    Card(
-                      clipBehavior: Clip.antiAlias,
-                      child: ExpansionTile(
-                        title: Text('All ${otherLeaves.length} leaves'),
-                        children: [
-                          for (final (i, leaf) in otherLeaves.indexed)
-                            ListTile(
-                              dense: true,
-                              title: Text('Leaf ${i + 1}'),
-                              subtitle: Text(
-                                'Mildew ${leaf.powderyMildewPct.toStringAsFixed(1)}% · '
-                                'Spot ${leaf.leafSpotPct.toStringAsFixed(1)}% · '
-                                'Healthy ${leaf.healthyPct.toStringAsFixed(1)}%',
-                              ),
-                              trailing: SeverityChip(
-                                severity: leaf.worstSeverity,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
+                  if (scan.framing != null && !scan.framing!.ok)
+                    _FramingWarning(framing: scan.framing!),
+                  CoverageCard(coverage: scan.primary!),
                   Card(
                     clipBehavior: Clip.antiAlias,
                     child: ListTile(
@@ -163,6 +135,42 @@ class _ScanResultViewState extends State<ScanResultView> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Shown when the photo isn't one dominant leaf, the kind of photo the model is validated on.
+class _FramingWarning extends StatelessWidget {
+  const _FramingWarning({required this.framing});
+
+  final Framing framing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final (title, body) = switch (framing.issue) {
+      'several_leaves' => (
+        'More than one big leaf in the photo',
+        'The result is for the largest leaf and may be less reliable. '
+            'For the best result, retake with one leaf filling the box.',
+      ),
+      'small_leaf' => (
+        'The leaf is small in the photo',
+        'Tiny spots can be missed when the leaf fills only a small part of the photo. '
+            'Move closer so the leaf fills the box.',
+      ),
+      _ => (
+        'Photo may be less reliable',
+        'For the best result, retake with one leaf filling the box.',
+      ),
+    };
+    return Card(
+      color: theme.colorScheme.tertiaryContainer,
+      child: ListTile(
+        leading: Icon(Icons.warning_amber_rounded, color: theme.colorScheme.onTertiaryContainer),
+        title: Text(title, style: TextStyle(color: theme.colorScheme.onTertiaryContainer)),
+        subtitle: Text(body, style: TextStyle(color: theme.colorScheme.onTertiaryContainer)),
+      ),
     );
   }
 }

@@ -2,7 +2,8 @@
 treatment list.
 
 Two steps, both through an OpenAI-compatible chat API (Ollama by default):
-1. describe_photo: a vision model (LLM_VISION_MODEL) looks at the leaf photo and reports the visible symptoms.
+1. describe_photo: a vision model (LLM_VISION_MODEL) checks the photo for what the scan can't see: other problems
+   (insects, nutrient deficiency, sunscald) and image quality. The scan alone decides the diseases.
 2. get_advice: the text model (LLM_MODEL) writes the tips from those observations + coverage/severity + weather.
 
 The text model may only recommend products from DISEASE_GUIDE: treatments it returns that match no guide entry
@@ -89,31 +90,57 @@ DISEASE_GUIDE: dict[str, dict] = {
     },
 }
 
+# What the app shows under each product. Written here, not by the LLM: in testing the LLM invented spray rates
+# ("1 L/ha, 1:1000") despite being told not to. No rates or doses: the product label decides those.
+PRODUCT_HOW = {
+    "Sulfur (wettable)": "Protective spray. Not above 32 °C or within 2 weeks of an oil spray.",
+    "Potassium bicarbonate": "Kills mildew on contact. Cover both sides of the leaves.",
+    "Neem oil / horticultural oil": "Cover the leaves well. Not in heat above 32 °C or with sulfur.",
+    "Bacillus subtilis / amyloliquefaciens": "Biological. Works best early, before the disease spreads.",
+    "Myclobutanil": "Follow-up if it keeps spreading. At most 2 sprays in a row.",
+    "Tebuconazole": "Follow-up if it keeps spreading. At most 2 sprays in a row.",
+    "Azoxystrobin": "Follow-up if it keeps spreading. High resistance risk: at most 2 in a row.",
+    "Trifloxystrobin": "Follow-up if it keeps spreading. High resistance risk: at most 2 in a row.",
+    "Boscalid": "Follow-up if it keeps spreading. Alternate with a different group.",
+    "Copper (hydroxide / oxychloride)": "Protective spray. The main option if the spots are bacterial.",
+    "Chlorothalonil": "Protective follow-up if it keeps spreading. Not allowed in the EU.",
+    "Mancozeb": "Protective follow-up if it keeps spreading. Not allowed in the EU.",
+    "Difenoconazole": "Follow-up if it keeps spreading. At most 2 sprays in a row.",
+}
+
 SYSTEM_PROMPT = """You are a practical plant-health advisor (agronomist) helping a grower act on a leaf scan.
 You are given: the scan result (disease coverage % and severity per disease, measured by a segmentation model),
-what a vision model saw in the leaf photo, current local weather with pre-computed spray conditions and disease
-pressure, and the ONLY treatment products you may recommend.
+a photo check (other problems and image quality), current local weather with pre-computed spray conditions and
+disease pressure, and the ONLY treatment products you may recommend.
 
 Rules:
-- The scan percentages are the measurement. Use the photo observations to confirm them and to describe the symptoms
-  in the summary. If the photo shows something else (pests, nutrient deficiency, sunscald), mention it with cultural
-  advice only. If the photo clearly contradicts the scan, or is blurry/dark, say the result should be re-checked.
-- Recommend chemical/biological products ONLY from the provided list, using their names as given. Never invent products, brands or rates.
+- The scan decides which diseases are present and how severe they are. Never contradict it and never tell the
+  grower to re-check it.
+- The photo check only adds what the scan cannot see: other problems (insects, mites, chewed holes, sunscald): at
+  most one action for them, after the disease steps; and image quality: if blurry or too dark, one action says to
+  retake the photo.
+- Recommend chemical/biological products ONLY from the provided list, using their names as given. Never invent
+  products or brands, and NEVER give rates, doses, dilutions or volumes: the product label decides those.
+- One product per spray. Choose products for the disease with the larger coverage. Give the organic product first;
+  the conventional one is a follow-up only if the disease keeps spreading after 7-10 days.
 - Match intensity to severity: none -> prevention only; mild -> cultural + organic first; moderate/severe -> add conventional options.
 - Recommend rotating FRAC groups; never two sprays of the same group in a row.
 - Respect the weather: no spraying if rain is expected before the product dries, in wind, or outside the spray window. Name the spray window if there is one; if not, say to wait.
 - Use the disease-pressure levels to say whether the weather favours spread. Use week_outlook to name the days
   when risk peaks or rises, and to plan protectant sprays on good spray days just before high-risk days.
 - Leaf spot may be bacterial; if so, copper is the option and fungicides will not help.
-- Be concise and practical, plain language for a farmer. Up to 5 actions, up to 6 treatments, up to 4 prevention tips.
+- BE BRIEF. The grower reads this on a phone. Plain words, no repetition between fields, no filler.
+  * summary: ONE sentence, at most 15 words: what was found and whether the weather favours spread.
+  * actions: at most 3, most urgent first, each at most 12 words, each a concrete thing to do (start with a verb).
+    Include the main cultural step and the spray step. Do NOT repeat the spray window's day or time (the app shows
+    it): write "in the spray window", or "wait for a dry, calm day" if there is no window.
+  * treatments: at most 2 products from the list: the best organic/low-toxicity one, and ONE conventional one only
+    if severity is moderate or severe. Every product named in the actions must be in treatments.
 
 Reply with ONLY a JSON object of this shape:
-{"summary": "2-3 sentences: what was found and what the weather means for it",
- "urgency": "low" | "medium" | "high",
- "actions": ["step 1, most urgent first", "..."],
- "treatments": [{"name": "product from the list, or a cultural practice", "type": "cultural" | "organic" | "conventional", "how": "when/how to use it, one sentence"}],
- "spray_timing": "one sentence on when to spray (or not) given the weather",
- "prevention": ["tip", "..."]}"""
+{"summary": "one short sentence",
+ "actions": ["short step", "short step", "short step"],
+ "treatments": [{"name": "product from the list", "type": "organic" | "conventional"}]}"""
 
 
 def _diseases_present(scan: dict) -> list[str]:
@@ -176,7 +203,8 @@ def build_messages(
     context = {
         "crop": crop or "unknown (give general advice)",
         "scan": _scan_report(scan),
-        "photo_observations": photo or "no photo available (rely on the scan numbers)",
+        "photo_check": ({k: photo.get(k, "") for k in ("other_issues", "image_quality")} if photo
+                        else "no photo check available"),
         "weather": conditions or "unavailable (say that timing advice is general)",
         "week_outlook": _week_outlook(outlook) if outlook else "unavailable",
         "allowed_treatments": allowed,
@@ -196,10 +224,38 @@ def _match_product(name: str, diseases: list[str]) -> dict | None:
     return None
 
 
-def _str_list(value, limit: int) -> list[str]:
+# Hard limits on what reaches the phone, whatever the model writes (it doesn't always follow length instructions).
+MAX_ACTIONS, MAX_TREATMENTS = 3, 2
+SUMMARY_WORDS, ACTION_WORDS = 20, 14
+
+
+def brief(text, max_words: int) -> str:
+    """First sentence only, cut to max_words (with an ellipsis if cut)."""
+    text = " ".join(str(text or "").split())
+    sentence = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)[0]
+    words = sentence.split()
+    return sentence if len(words) <= max_words else " ".join(words[:max_words]).rstrip(",;:") + "…"
+
+
+def _step(text, max_words: int) -> str:
+    """A list item as shown in the app: brief, capitalised, no trailing full stop (they're shown as a numbered list)."""
+    s = brief(text, max_words)
+    s = s[:-1] if s.endswith(".") else s
+    return s[:1].upper() + s[1:]
+
+
+def _str_list(value, limit: int, max_words: int) -> list[str]:
     if not isinstance(value, list):
         return []
-    return [str(v).strip() for v in value if str(v).strip()][:limit]
+    return [_step(v, max_words) for v in value if str(v).strip()][:limit]
+
+
+def spray_timing_text(conditions: dict | None) -> str:
+    """From the computed spray window (weather.derive_conditions), not the LLM: exact and short. '' without weather."""
+    if not conditions:
+        return ""
+    window = conditions.get("spray_window")
+    return f"Spray window: {window}" if window else "No good spray window in the next 48 h"
 
 
 def _fallback_urgency(scan: dict) -> str:
@@ -221,30 +277,38 @@ def parse_reply(text: str, scan: dict) -> dict:
         raise ValueError("reply has no summary")
 
     diseases = _diseases_present(scan) or list(DISEASE_GUIDE)
-    treatments, seen = [], set()
+    treatments, seen_types = [], set()
     for t in data.get("treatments") or []:
         if not isinstance(t, dict) or not str(t.get("name", "")).strip():
             continue
-        name, kind, how = str(t["name"]).strip(), str(t.get("type", "")).lower().strip(), str(t.get("how", "")).strip()
-        product = _match_product(name, diseases)
-        if product:  # grounded: canonical name, type and FRAC code from the guide
-            if product["name"] in seen:
-                continue
-            seen.add(product["name"])
-            treatments.append({"name": product["name"], "type": product["type"], "how": how, "frac_group": product["frac"]})
-        elif kind == "cultural":
-            treatments.append({"name": name, "type": "cultural", "how": how, "frac_group": None})
-        else:
-            log.info("Dropped ungrounded treatment from LLM: %r", name)
+        product = _match_product(str(t["name"]).strip(), diseases)
+        if not product:  # invented product, or a cultural step (those belong in the actions)
+            log.info("Dropped treatment from LLM: %r", t["name"])
+            continue
+        if product["type"] in seen_types:  # at most one organic + one conventional
+            continue
+        seen_types.add(product["type"])
+        # grounded: canonical name, type, FRAC code and the "how" text all come from our list, not the LLM
+        treatments.append({"name": product["name"], "type": product["type"],
+                           "how": PRODUCT_HOW.get(product["name"], product["note"]), "frac_group": product["frac"]})
 
-    urgency = str(data.get("urgency", "")).lower()
+    # A conventional fungicide is only ever the follow-up, never sprayed alongside the organic one (the LLM still
+    # wrote "Apply Myclobutanil in the spray window" next to "Apply Sulfur…" despite the rule).
+    actions = []
+    for a in _str_list(data.get("actions"), MAX_ACTIONS, ACTION_WORDS):
+        product = _match_product(a, diseases)
+        if product and product["type"] == "conventional":
+            a = f"If it still spreads in 7–10 days, spray {product['name']}"
+        actions.append(a)
+
     return {
-        "summary": str(data["summary"]).strip(),
-        "urgency": urgency if urgency in ("low", "medium", "high") else _fallback_urgency(scan),
-        "actions": _str_list(data.get("actions"), 6),
-        "treatments": treatments[:8],
-        "spray_timing": str(data.get("spray_timing") or "").strip(),
-        "prevention": _str_list(data.get("prevention"), 5),
+        "summary": brief(data["summary"], SUMMARY_WORDS),
+        # From the scan, not the LLM: in testing it rated a mild leaf "high" and a moderate one "medium".
+        "urgency": _fallback_urgency(scan),
+        "actions": actions,
+        "treatments": treatments[:MAX_TREATMENTS],
+        "spray_timing": "",  # filled from the weather by the route (spray_timing_text)
+        "prevention": [],  # folded into the actions; kept so older app builds still parse the response
     }
 
 
@@ -289,12 +353,17 @@ def _missing_model_message(model: str, setting: str) -> str:
     )
 
 
-VISION_PROMPT = """This is a photo of a plant leaf taken for a disease scan. Describe only what you can actually see.
+# The photo check covers only what the segmentation model can't: the crop, other problems, and image quality. It
+# no longer describes mildew/spots: in testing the 7B vision model said "no white powdery growth" on leaves the scan
+# measured at up to 21 % mildew, and the contradiction confused the advice.
+VISION_PROMPT = """This is a photo of a plant leaf taken for a disease scan. Another model already measures powdery
+mildew and leaf spot, so do not describe those. Report only what you can clearly see.
 Reply with ONLY a JSON object:
 {"crop_guess": "plant species if recognisable from the leaf, else unknown",
- "symptoms": "2-3 sentences: colour, shape, size and position of any spots or lesions, white powdery growth, yellowing, browning, curling, holes",
- "other_issues": "visible problems that are not powdery mildew or leaf spot (insects, mites, webbing, nutrient deficiency, sunscald, physical damage), or none",
+ "other_issues": "ONLY if clearly visible: insects, mites, webbing, chewed holes, or sunscald (bleached, papery patches). Otherwise exactly: none",
  "image_quality": "good" | "blurry" | "too dark" | "leaf too small"}"""
+# Nutrient deficiency is left out on purpose: the 7B model reported it on half the test photos (mildew and spot
+# damage look like yellowing), which turned into fertiliser advice on a disease scan.
 
 
 def _photo_data_url(img: Image.Image) -> str:
@@ -335,20 +404,26 @@ def describe_photo(img: Image.Image) -> tuple[dict | None, str | None]:
         return None, note
     except ValueError:
         data = None
-    if not isinstance(data, dict) or not str(data.get("symptoms", "")).strip():
+    if not isinstance(data, dict) or not any(str(data.get(k, "")).strip() for k in ("other_issues", "image_quality")):
         log.warning("Unusable vision reply from %r: %r", model, (text or "")[:500])
         return None, "Photo not analysed: the vision model gave an unusable answer."
-    return {k: str(data.get(k, "")).strip() for k in ("crop_guess", "symptoms", "other_issues", "image_quality")}, None
+    photo = {k: str(data.get(k, "")).strip() for k in ("crop_guess", "other_issues", "image_quality")}
+    # Disease is the scan's job; the vision model still sometimes reports it ("powdery mildew") despite the prompt.
+    if any(w in photo["other_issues"].lower() for w in ("mildew", "leaf spot", "spots", "powder", "fung", "disease")):
+        photo["other_issues"] = "none"
+    return photo, None
 
 
 def photo_summary(photo: dict) -> str:
-    """One readable line for the app: the symptoms, plus other issues and poor image quality when present."""
-    parts = [photo["symptoms"]]
-    if photo.get("other_issues") and photo["other_issues"].lower().rstrip(".") not in ("none", "no", "n/a"):
-        parts.append(f"Also seen: {photo['other_issues']}")
-    if photo.get("image_quality") and photo["image_quality"].lower() != "good":
-        parts.append(f"Image quality: {photo['image_quality']}.")
-    return " ".join(parts)
+    """One line for the app: other problems seen, and a retake hint for a poor photo; never a disease verdict."""
+    parts = []
+    issues = photo.get("other_issues", "").strip().rstrip(".")
+    if issues and issues.lower() not in ("none", "no", "n/a", "nothing"):
+        parts.append(f"Also seen: {issues}.")
+    quality = photo.get("image_quality", "").strip().lower().rstrip(".")
+    if quality and quality != "good":
+        parts.append(f"Image quality: {quality}. Retake for a more reliable result.")
+    return " ".join(parts) or "Photo checked: no insects or other problems seen."
 
 
 def get_advice(

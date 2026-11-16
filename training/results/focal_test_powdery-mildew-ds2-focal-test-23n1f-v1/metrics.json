@@ -1,0 +1,851 @@
+{
+ "project": "powdery-mildew-ds2-focal-test-23n1f",
+ "version": 1,
+ "checkpoint": "runs\\yolo26x-seg_data-v2\\weights\\best.pt",
+ "thresholds": {
+  "leaf": 0.2,
+  "leaf_spot": 0.25,
+  "powdery_mildew": 0.3
+ },
+ "photos_scored": 49,
+ "photos_without_leaf_label": [
+  "20261001_183427153_iOS_jpg.rf.fd88830868387d65928d8fb6db40ac3e.jpg"
+ ],
+ "metrics": {
+  "app": {
+   "pixel.leaf.precision": {
+    "value": 0.993062023129509,
+    "ci95": [
+     0.9915998400014341,
+     0.9942201573446175
+    ]
+   },
+   "pixel.leaf.recall": {
+    "value": 0.9807752043062942,
+    "ci95": [
+     0.977253483092832,
+     0.983972980509737
+    ]
+   },
+   "pixel.leaf.f1": {
+    "value": 0.9868803719838072,
+    "ci95": [
+     0.9848766829025623,
+     0.9886577788954372
+    ]
+   },
+   "pixel.leaf.iou": {
+    "value": 0.9741005353101635,
+    "ci95": [
+     0.9702039804569182,
+     0.9775699642616161
+    ]
+   },
+   "pixel.leaf_spot.precision": {
+    "value": 0.7726310367548439,
+    "ci95": [
+     0.7334069330414856,
+     0.8055505801675645
+    ]
+   },
+   "pixel.leaf_spot.recall": {
+    "value": 0.8958913459972232,
+    "ci95": [
+     0.8359806436104414,
+     0.9425798778363927
+    ]
+   },
+   "pixel.leaf_spot.f1": {
+    "value": 0.8297083295170671,
+    "ci95": [
+     0.7902832601703852,
+     0.8625452001704114
+    ]
+   },
+   "pixel.leaf_spot.iou": {
+    "value": 0.7089756771272923,
+    "ci95": [
+     0.6532795936407197,
+     0.7583116320102388
+    ]
+   },
+   "pixel.powdery_mildew.precision": {
+    "value": 0.8245538749106409,
+    "ci95": [
+     0.7944625987858895,
+     0.8473585906320175
+    ]
+   },
+   "pixel.powdery_mildew.recall": {
+    "value": 0.8488034507511882,
+    "ci95": [
+     0.7894287520028935,
+     0.8871482691959257
+    ]
+   },
+   "pixel.powdery_mildew.f1": {
+    "value": 0.8365029556106369,
+    "ci95": [
+     0.797310677109748,
+     0.8617334198704281
+    ]
+   },
+   "pixel.powdery_mildew.iou": {
+    "value": 0.7189558062432878,
+    "ci95": [
+     0.6629398481918907,
+     0.7570576480052781
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.mae": {
+    "value": 0.14286339159920808,
+    "ci95": [
+     0.10201284807133161,
+     0.18684538662286573
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.mae_infected": {
+    "value": 0.14286339159920808,
+    "ci95": [
+     0.10201284807133161,
+     0.18684538662286573
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.bias": {
+    "value": 0.0980768626821596,
+    "ci95": [
+     0.04518414177761303,
+     0.14731200168206351
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.ccc": {
+    "value": 0.9582861980684784,
+    "ci95": [
+     0.9317602514795934,
+     0.972453954792956
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.mae": {
+    "value": 0.24571375657560546,
+    "ci95": [
+     0.14594836754730547,
+     0.37729238520682773
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.mae_infected": {
+    "value": 0.24571375657560546,
+    "ci95": [
+     0.14594836754730547,
+     0.37729238520682773
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.bias": {
+    "value": 0.02060112851490628,
+    "ci95": [
+     -0.131830778393736,
+     0.1372031167314759
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.ccc": {
+    "value": 0.9815143389175298,
+    "ci95": [
+     0.9429220630132603,
+     0.9970700203684698
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.leaf_spot.mae": {
+    "value": 0.16933888384941373,
+    "ci95": [
+     0.11783782098840205,
+     0.22491140504242974
+    ]
+   },
+   "coverage_app_rule.leaf_spot.mae_infected": {
+    "value": 0.16933888384941373,
+    "ci95": [
+     0.11783782098840205,
+     0.22491140504242974
+    ]
+   },
+   "coverage_app_rule.leaf_spot.bias": {
+    "value": 0.1165022523629395,
+    "ci95": [
+     0.0430789550008629,
+     0.17729950941440645
+    ]
+   },
+   "coverage_app_rule.leaf_spot.ccc": {
+    "value": 0.9374533597893798,
+    "ci95": [
+     0.9007527111919034,
+     0.9586837318850651
+    ]
+   },
+   "coverage_app_rule.leaf_spot.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.leaf_spot.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.mae": {
+    "value": 0.29792394792025645,
+    "ci95": [
+     0.19328315712618935,
+     0.44014479080443175
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.mae_infected": {
+    "value": 0.29792394792025645,
+    "ci95": [
+     0.19328315712618935,
+     0.44014479080443175
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.bias": {
+    "value": 0.02614268225254088,
+    "ci95": [
+     -0.13338228307082828,
+     0.15125275187996373
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.ccc": {
+    "value": 0.9777597173724758,
+    "ci95": [
+     0.937791323923953,
+     0.9941555523593915
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "primary_leaf_correct": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "train-style": {
+   "pixel.leaf.precision": {
+    "value": 0.992700699748955,
+    "ci95": [
+     0.9909909265290067,
+     0.994047223530305
+    ]
+   },
+   "pixel.leaf.recall": {
+    "value": 0.97012231446665,
+    "ci95": [
+     0.9640628549109452,
+     0.9757564716848868
+    ]
+   },
+   "pixel.leaf.f1": {
+    "value": 0.9812816473399416,
+    "ci95": [
+     0.9780504846839737,
+     0.9842485170750668
+    ]
+   },
+   "pixel.leaf.iou": {
+    "value": 0.9632511721985151,
+    "ci95": [
+     0.9570438363563163,
+     0.9689855576528219
+    ]
+   },
+   "pixel.leaf_spot.precision": {
+    "value": 0.7856602153042136,
+    "ci95": [
+     0.7471429281196513,
+     0.8130250310374467
+    ]
+   },
+   "pixel.leaf_spot.recall": {
+    "value": 0.8372400580191277,
+    "ci95": [
+     0.7316703407312835,
+     0.9106950100264052
+    ]
+   },
+   "pixel.leaf_spot.f1": {
+    "value": 0.8106304682512862,
+    "ci95": [
+     0.7460993617322025,
+     0.8544157227791315
+    ]
+   },
+   "pixel.leaf_spot.iou": {
+    "value": 0.6815631699085373,
+    "ci95": [
+     0.5950227148574896,
+     0.7458340166086382
+    ]
+   },
+   "pixel.powdery_mildew.precision": {
+    "value": 0.8265578476104792,
+    "ci95": [
+     0.7965899381048417,
+     0.8505566794277643
+    ]
+   },
+   "pixel.powdery_mildew.recall": {
+    "value": 0.8194939407969349,
+    "ci95": [
+     0.7525048862143568,
+     0.8644772266129458
+    ]
+   },
+   "pixel.powdery_mildew.f1": {
+    "value": 0.8230107370926666,
+    "ci95": [
+     0.7802653833628718,
+     0.8503959783013171
+    ]
+   },
+   "pixel.powdery_mildew.iou": {
+    "value": 0.6992508453813004,
+    "ci95": [
+     0.6397009421558831,
+     0.7397294740457452
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.mae": {
+    "value": 0.1478528361962333,
+    "ci95": [
+     0.08803736791487266,
+     0.23338126991464625
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.mae_infected": {
+    "value": 0.1478528361962333,
+    "ci95": [
+     0.08803736791487266,
+     0.23338126991464625
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.bias": {
+    "value": 0.029030315404094967,
+    "ci95": [
+     -0.06153677790666985,
+     0.0985943069613238
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.ccc": {
+    "value": 0.9035962885441767,
+    "ci95": [
+     0.7706989076332992,
+     0.9795050673631368
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.mae": {
+    "value": 0.3176390252178759,
+    "ci95": [
+     0.1973618747782032,
+     0.4925615436153552
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.mae_infected": {
+    "value": 0.3176390252178759,
+    "ci95": [
+     0.1973618747782032,
+     0.4925615436153552
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.bias": {
+    "value": -0.06581586921678091,
+    "ci95": [
+     -0.25158547430974176,
+     0.08092797640062625
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.ccc": {
+    "value": 0.9717828406375765,
+    "ci95": [
+     0.9170193495665521,
+     0.9942384542419102
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.leaf_spot.mae": {
+    "value": 0.18231150872400367,
+    "ci95": [
+     0.11205591498424694,
+     0.2683204963167191
+    ]
+   },
+   "coverage_app_rule.leaf_spot.mae_infected": {
+    "value": 0.18231150872400367,
+    "ci95": [
+     0.11205591498424694,
+     0.2683204963167191
+    ]
+   },
+   "coverage_app_rule.leaf_spot.bias": {
+    "value": 0.04944570800355414,
+    "ci95": [
+     -0.06332962048629857,
+     0.13140951690078684
+    ]
+   },
+   "coverage_app_rule.leaf_spot.ccc": {
+    "value": 0.8827857589368695,
+    "ci95": [
+     0.7654630303571973,
+     0.9566834575736284
+    ]
+   },
+   "coverage_app_rule.leaf_spot.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.leaf_spot.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.mae": {
+    "value": 0.37857688535218237,
+    "ci95": [
+     0.2519864565414637,
+     0.5503370036353914
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.mae_infected": {
+    "value": 0.37857688535218237,
+    "ci95": [
+     0.2519864565414637,
+     0.5503370036353914
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.bias": {
+    "value": -0.03545576420308547,
+    "ci95": [
+     -0.2289295929434397,
+     0.11978004693028615
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.ccc": {
+    "value": 0.9679854307136899,
+    "ci95": [
+     0.9125370209109828,
+     0.9907483679076934
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "primary_leaf_correct": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "isolated": {
+   "pixel.leaf.precision": {
+    "value": 0.9936426749653049,
+    "ci95": [
+     0.9922089429225568,
+     0.9947376477503097
+    ]
+   },
+   "pixel.leaf.recall": {
+    "value": 0.9833576764954656,
+    "ci95": [
+     0.9799951581117646,
+     0.9865869847424339
+    ]
+   },
+   "pixel.leaf.f1": {
+    "value": 0.9884734227777501,
+    "ci95": [
+     0.9865521913543671,
+     0.9902221158982
+    ]
+   },
+   "pixel.leaf.iou": {
+    "value": 0.9772095415349283,
+    "ci95": [
+     0.9734612706277058,
+     0.9806335942679015
+    ]
+   },
+   "pixel.leaf_spot.precision": {
+    "value": 0.7443895562989727,
+    "ci95": [
+     0.7010570163385977,
+     0.7813058994860106
+    ]
+   },
+   "pixel.leaf_spot.recall": {
+    "value": 0.9052535234209567,
+    "ci95": [
+     0.8499538582302548,
+     0.9458114639607421
+    ]
+   },
+   "pixel.leaf_spot.f1": {
+    "value": 0.8169782626576574,
+    "ci95": [
+     0.7760582266722249,
+     0.8523042948021733
+    ]
+   },
+   "pixel.leaf_spot.iou": {
+    "value": 0.6905860111184419,
+    "ci95": [
+     0.6340646640853972,
+     0.7426221875244475
+    ]
+   },
+   "pixel.powdery_mildew.precision": {
+    "value": 0.8233744121939355,
+    "ci95": [
+     0.7947097805767018,
+     0.8452386975885315
+    ]
+   },
+   "pixel.powdery_mildew.recall": {
+    "value": 0.841162016251322,
+    "ci95": [
+     0.7845905211674757,
+     0.8842105418893023
+    ]
+   },
+   "pixel.powdery_mildew.f1": {
+    "value": 0.8321731730890448,
+    "ci95": [
+     0.7921344162322129,
+     0.8584898998906465
+    ]
+   },
+   "pixel.powdery_mildew.iou": {
+    "value": 0.7125826825628289,
+    "ci95": [
+     0.6558133975998828,
+     0.7520650932914174
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.mae": {
+    "value": 0.15681342793864195,
+    "ci95": [
+     0.11446301757704942,
+     0.20274715508431815
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.mae_infected": {
+    "value": 0.15681342793864195,
+    "ci95": [
+     0.11446301757704942,
+     0.20274715508431815
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.bias": {
+    "value": 0.13562564685120274,
+    "ci95": [
+     0.08674012374530322,
+     0.18387451979243605
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.ccc": {
+    "value": 0.9558179617307573,
+    "ci95": [
+     0.9228825488627237,
+     0.9723755390845099
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_given_leaf.leaf_spot.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.mae": {
+    "value": 0.3079657281639407,
+    "ci95": [
+     0.20745379405437947,
+     0.43870978224818463
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.mae_infected": {
+    "value": 0.3079657281639407,
+    "ci95": [
+     0.20745379405437947,
+     0.43870978224818463
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.bias": {
+    "value": 0.003948684574875353,
+    "ci95": [
+     -0.16109977129148742,
+     0.13479906412232134
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.ccc": {
+    "value": 0.9772502002490887,
+    "ci95": [
+     0.9451944672623939,
+     0.99297784860831
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_given_leaf.powdery_mildew.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.leaf_spot.mae": {
+    "value": 0.17149317814535558,
+    "ci95": [
+     0.1270773652754022,
+     0.21928518862582683
+    ]
+   },
+   "coverage_app_rule.leaf_spot.mae_infected": {
+    "value": 0.17149317814535558,
+    "ci95": [
+     0.1270773652754022,
+     0.21928518862582683
+    ]
+   },
+   "coverage_app_rule.leaf_spot.bias": {
+    "value": 0.1519008785082664,
+    "ci95": [
+     0.10020592157428389,
+     0.20065631329732458
+    ]
+   },
+   "coverage_app_rule.leaf_spot.ccc": {
+    "value": 0.9500414067852225,
+    "ci95": [
+     0.9136185305764435,
+     0.9685365262373213
+    ]
+   },
+   "coverage_app_rule.leaf_spot.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.leaf_spot.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.mae": {
+    "value": 0.3428058409501891,
+    "ci95": [
+     0.24450237330794627,
+     0.4719034264467285
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.mae_infected": {
+    "value": 0.3428058409501891,
+    "ci95": [
+     0.24450237330794627,
+     0.4719034264467285
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.bias": {
+    "value": 0.06811524604464059,
+    "ci95": [
+     -0.0940129216881043,
+     0.20139809099623754
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.ccc": {
+    "value": 0.9768939432756061,
+    "ci95": [
+     0.9454968973929162,
+     0.9910037117971424
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.severity_acc": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "coverage_app_rule.powdery_mildew.presence_f1": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   },
+   "primary_leaf_correct": {
+    "value": 1.0,
+    "ci95": [
+     1.0,
+     1.0
+    ]
+   }
+  }
+ },
+ "mask_ap": {
+  "app": {
+   "leaf": {
+    "ap50": 0.9691089108910895,
+    "ap50_95": 0.8964488203727559
+   },
+   "leaf_spot": {
+    "ap50": 0.7957610126776528,
+    "ap50_95": 0.4351223931148952
+   },
+   "powdery_mildew": {
+    "ap50": 0.6916303023776423,
+    "ap50_95": 0.4620590587605625
+   }
+  },
+  "train-style": {
+   "leaf": {
+    "ap50": 0.9801980198019802,
+    "ap50_95": 0.8810143141611888
+   },
+   "leaf_spot": {
+    "ap50": 0.7833827015392565,
+    "ap50_95": 0.3580443469452572
+   },
+   "powdery_mildew": {
+    "ap50": 0.6513851016077548,
+    "ap50_95": 0.4229145895969628
+   }
+  },
+  "isolated": {
+   "leaf": {
+    "ap50": 0.9801980198019802,
+    "ap50_95": 0.9371694099421272
+   },
+   "leaf_spot": {
+    "ap50": 0.8290575382581091,
+    "ap50_95": 0.4647088173353823
+   },
+   "powdery_mildew": {
+    "ap50": 0.6738014835942291,
+    "ap50_95": 0.4605610108051786
+   }
+  }
+ },
+ "ultralytics_isolated": {
+  "map50": 0.7884267159848138,
+  "map50_95": 0.5507519438337298
+ },
+ "ultralytics_raw": {
+  "map50": 0.42806860828879273,
+  "map50_95": 0.22378080117879404
+ }
+}

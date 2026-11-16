@@ -143,9 +143,54 @@ def test_parse_reply_keeps_only_grounded_products():
     assert names == [
         ("Sulfur (wettable)", "organic", "M2"),  # FRAC from the guide, not the model
         ("Myclobutanil", "conventional", "3"),
-        ("Prune for air flow", "cultural", None),
-    ]  # invented product and the leaf-spot-only copper are dropped
+    ]  # invented product, the leaf-spot-only copper and the cultural step (an action, not a product) are dropped
     assert tips["urgency"] == "high"
+    assert tips["prevention"] == [] and tips["spray_timing"] == ""  # spray timing comes from the weather
+
+
+def test_parse_reply_keeps_it_brief():
+    long = {
+        "summary": "Moderate powdery mildew on most of the leaf. Warm, humid weather this week favours it spreading quickly.",
+        "urgency": "high",
+        "actions": [
+            "Remove and destroy the worst leaves today, bagging them so spores do not spread to neighbouring plants",
+            "Spray sulfur tomorrow morning",
+            "Thin the canopy",
+            "Water at the base",
+        ],
+        "treatments": [
+            {"name": "Sulfur", "type": "organic", "how": "Spray early morning."},
+            {"name": "Potassium bicarbonate", "type": "organic", "how": "Second organic option"},  # one per type
+            {"name": "Myclobutanil", "type": "conventional", "how": "If it keeps spreading."},
+            {"name": "Azoxystrobin", "type": "conventional", "how": "Alternative"},
+        ],
+    }
+    tips = parse_reply(json.dumps(long), SCAN)
+    assert tips["summary"] == "Moderate powdery mildew on most of the leaf."  # first sentence only
+    assert len(tips["actions"]) == 3
+    assert tips["actions"][1:] == ["Spray sulfur tomorrow morning", "Thin the canopy"]  # consistent style
+    assert tips["actions"][0].endswith("…") and len(tips["actions"][0].split()) == 14  # long step cut
+    assert [t["name"] for t in tips["treatments"]] == ["Sulfur (wettable)", "Myclobutanil"]
+
+
+def test_conventional_fungicide_is_only_a_follow_up():
+    reply = {**LLM_REPLY, "actions": ["Apply sulfur in the spray window", "Apply myclobutanil in the spray window"]}
+    tips = parse_reply(json.dumps(reply), SCAN)
+    assert tips["actions"] == ["Apply sulfur in the spray window", "If it still spreads in 7–10 days, spray Myclobutanil"]
+
+
+def test_vision_disease_reports_are_dropped(monkeypatch):
+    monkeypatch.setattr(advice, "_chat", lambda model, messages: json.dumps({**VISION_REPLY, "other_issues": "Powdery mildew"}))
+    from PIL import Image
+
+    photo, note = advice.describe_photo(Image.new("RGB", (64, 64)))
+    assert note is None and photo["other_issues"] == "none"  # the scan decides diseases, not the photo check
+
+
+def test_spray_timing_comes_from_the_weather():
+    assert advice.spray_timing_text({"spray_window": "Tomorrow 06:00–11:00"}) == "Spray window: Tomorrow 06:00–11:00"
+    assert advice.spray_timing_text({"spray_window": None}) == "No good spray window in the next 48 h"
+    assert advice.spray_timing_text(None) == ""
 
 
 def test_parse_reply_rejects_garbage():
@@ -155,8 +200,12 @@ def test_parse_reply_rejects_garbage():
         parse_reply('{"urgency": "high"}', SCAN)
 
 
-def test_parse_reply_falls_back_on_bad_urgency():
-    assert parse_reply(json.dumps({**LLM_REPLY, "urgency": "very"}), SCAN)["urgency"] == "high"
+def test_urgency_comes_from_the_scan_not_the_llm():
+    assert parse_reply(json.dumps({**LLM_REPLY, "urgency": "low"}), SCAN)["urgency"] == "high"  # moderate mildew
+    mild = {**SCAN, "primary": {**SCAN["primary"], "severity": {"powdery_mildew": "mild", "leaf_spot": "none"}}}
+    assert parse_reply(json.dumps({**LLM_REPLY, "urgency": "high"}), mild)["urgency"] == "medium"
+    healthy = {**SCAN, "primary": {**SCAN["primary"], "severity": {"powdery_mildew": "none", "leaf_spot": "none"}}}
+    assert parse_reply(json.dumps(LLM_REPLY), healthy)["urgency"] == "low"
 
 
 def test_healthy_scan_prompt_offers_both_diseases():
@@ -169,12 +218,7 @@ def test_healthy_scan_prompt_offers_both_diseases():
 # --- endpoint ---------------------------------------------------------------------------------
 
 
-VISION_REPLY = {
-    "crop_guess": "tomato",
-    "symptoms": "Small brown circular spots with yellow halos on the upper leaf.",
-    "other_issues": "none",
-    "image_quality": "good",
-}
+VISION_REPLY = {"crop_guess": "tomato", "other_issues": "none", "image_quality": "good"}
 
 
 def chat_reply(content: dict) -> httpx.Response:
@@ -209,6 +253,7 @@ def test_advice_with_weather(client, scan_id, fake_llm, monkeypatch):
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["weather"]["spray_window"] == "Today 08:00–18:00"
+    assert body["spray_timing"] == "Spray window: Today 08:00–18:00"  # from the weather, not the LLM's text
     assert body["disclaimer"] and body["model"]
     # The prompt carries the crop, the scan and the derived weather facts.
     context = json.loads(fake_llm[0]["messages"][1]["content"])
@@ -232,13 +277,14 @@ def test_advice_uses_photo_results_and_weather(client, scan_id, fake_llm, monkey
     assert image_part["image_url"]["url"].startswith("data:image/jpeg;base64,/9j/")  # a JPEG
 
     context = json.loads(text_call["messages"][1]["content"])
-    assert context["photo_observations"]["symptoms"] == VISION_REPLY["symptoms"]
+    # only what the scan can't see goes to the text model: no disease verdict from the photo
+    assert context["photo_check"] == {"other_issues": "none", "image_quality": "good"}
     assert context["scan"]["largest_leaf"]["leaf_spot_pct"] == 1.0
     assert context["weather"]["spray_window"] == "Today 08:00–18:00"
     assert context["crop"].startswith("probably tomato")  # guessed from the photo when not given
     assert context["week_outlook"]["days"][0].startswith("Today: mildew high, leaf spot low")
 
-    assert body["photo_observations"] == VISION_REPLY["symptoms"]
+    assert body["photo_observations"] == "Photo checked: no insects or other problems seen."
     assert body["photo_note"] is None
     assert body["vision_model"] == settings.llm_vision_model
 
@@ -267,15 +313,28 @@ def test_advice_rejects_bad_photo(client, scan_id, fake_llm):
 
 
 def test_photo_summary():
-    assert advice.photo_summary(VISION_REPLY) == VISION_REPLY["symptoms"]
+    assert advice.photo_summary(VISION_REPLY) == "Photo checked: no insects or other problems seen."
     extra = {**VISION_REPLY, "other_issues": "Aphids on the underside.", "image_quality": "blurry"}
-    assert advice.photo_summary(extra).endswith("Also seen: Aphids on the underside. Image quality: blurry.")
+    assert advice.photo_summary(extra) == (
+        "Also seen: Aphids on the underside. Image quality: blurry. Retake for a more reliable result."
+    )
+
+
+def test_product_how_comes_from_our_list_not_the_llm():
+    reply = {**LLM_REPLY, "treatments": [{"name": "Sulfur", "type": "organic", "how": "Apply 1 L/ha, 1:1000"}]}
+    tips = parse_reply(json.dumps(reply), SCAN)
+    assert tips["treatments"][0]["how"] == advice.PRODUCT_HOW["Sulfur (wettable)"]  # the invented rate is gone
+    # every product in the guide has a curated "how", and none mentions a rate
+    names = {p["name"] for d in advice.DISEASE_GUIDE.values() for p in d["products"]}
+    assert names <= set(advice.PRODUCT_HOW)
+    assert not any(u in h for h in advice.PRODUCT_HOW.values() for u in ("L/ha", "g/L", "ml", "1:"))
 
 
 def test_advice_without_weather(client, scan_id, fake_llm, monkeypatch):
     monkeypatch.setattr(weather, "fetch_weather", lambda lat, lon: None)  # Open-Meteo down
     res = client.post(f"/scans/{scan_id}/advice", json={"lat": 17.4, "lon": 78.5})
     assert res.status_code == 200 and res.json()["weather"] is None
+    assert res.json()["spray_timing"] == ""  # no weather, no spray-window chip
     # No location at all (permission denied).
     assert client.post(f"/scans/{scan_id}/advice", json={}).json()["weather"] is None
 
