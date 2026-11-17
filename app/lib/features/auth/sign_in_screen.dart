@@ -91,7 +91,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Leaf Disease Detector',
+                        'CropCare',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.headlineSmall,
                       ),

@@ -137,6 +137,45 @@ def leaf_regions(leaf_masks: list[np.ndarray], any_disease: np.ndarray) -> list[
     return [r | (attach & (nearest == i)) for i, r in enumerate(regions, 1)]
 
 
+SEVERITY_ORDER = ("none", "mild", "moderate", "severe")
+
+
+def aggregate_plant(leaves: list[dict]) -> dict:
+    """Whole-plant result from per-leaf coverage dicts (compute_coverage()["primary"], one per leaf photo).
+
+    Per disease: the plant % is the average over the leaves, graded with the single-leaf bands; if at least
+    settings.plant_spread_frac of the leaves have it, the level goes up a step (it's spreading through the plant).
+    Each leaf counts equally: photos are cropped and zoomed differently, so their pixel areas aren't comparable.
+    → {"primary": <plant-level coverage, same shape as a leaf's>, "plant": {"leaves_analysed", "leaves_affected",
+       "spread", "raised"}}
+    """
+    n = len(leaves)
+    avg = {d: sum(leaf[f"{d}_pct"] for leaf in leaves) / n for d in DISEASE_CLASSES}
+    floor = settings.plant_affected_min_pct
+    affected = {d: sum(1 for leaf in leaves if leaf[f"{d}_pct"] > floor) for d in DISEASE_CLASSES}
+    levels, raised = {}, []
+    for d in DISEASE_CLASSES:
+        level = severity(avg[d])
+        if level != "none" and affected[d] / n >= settings.plant_spread_frac and level != "severe":
+            level = SEVERITY_ORDER[SEVERITY_ORDER.index(level) + 1]
+            raised.append(d)
+        levels[d] = level
+    return {
+        "primary": {
+            "powdery_mildew_pct": round(avg["powdery_mildew"], 2),
+            "leaf_spot_pct": round(avg["leaf_spot"], 2),
+            "healthy_pct": round(sum(leaf["healthy_pct"] for leaf in leaves) / n, 2),
+            "severity": levels,
+        },
+        "plant": {
+            "leaves_analysed": n,
+            "leaves_affected": affected,
+            "spread": {d: round(affected[d] / n, 3) for d in DISEASE_CLASSES},
+            "raised": raised,  # diseases whose level went up a step because they're on many leaves
+        },
+    }
+
+
 def severity(pct: float) -> str:
     if pct <= 0:
         return "none"

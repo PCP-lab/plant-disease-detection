@@ -9,13 +9,6 @@ Severity = Literal["none", "mild", "moderate", "severe"]
 Pressure = Literal["low", "medium", "high"]
 
 
-class LeafCoverage(BaseModel):
-    powdery_mildew_pct: float
-    leaf_spot_pct: float
-    healthy_pct: float
-    severity: dict[str, Severity]
-
-
 class Framing(BaseModel):
     """Photo check: is this one dominant leaf, the kind of photo the model is validated on?"""
 
@@ -25,14 +18,50 @@ class Framing(BaseModel):
     dominance: float | None  # main leaf area / second-largest leaf area; None if only one leaf
 
 
+class LeafCoverage(BaseModel):
+    powdery_mildew_pct: float
+    leaf_spot_pct: float
+    healthy_pct: float
+    severity: dict[str, Severity]
+    # Whole-plant scans only: which uploaded photo (0-based) this leaf came from, and that photo's check.
+    index: int | None = None
+    framing: Framing | None = None
+
+
+class PlantSummary(BaseModel):
+    """Whole-plant scans: how the leaf results were combined (primary holds the plant-level coverage)."""
+
+    leaves_analysed: int
+    leaves_affected: dict[str, int]  # per disease: leaves with any of it
+    spread: dict[str, float]  # per disease: leaves_affected / leaves_analysed
+    raised: list[str]  # diseases whose plant level went up a step because they're on many leaves
+    skipped: list[int] = []  # photo indexes with no leaf found, left out of the result
+    cover: int | None = None  # photo index of the most affected leaf (thumbnail, and the photo for the AI tips)
+
+
+class LeafImages(BaseModel):
+    """One leaf of a whole-plant scan: URLs when there's a Storage bucket, base64 JPEGs in the POST response."""
+
+    index: int
+    image_url: str | None = None
+    overlay_url: str | None = None
+    image_jpeg_b64: str | None = None
+    overlay_jpeg_b64: str | None = None
+
+
 class ScanResult(BaseModel):
     id: str
     created_at: datetime
     model_version: str
+    # "leaf": one photo (POST /scans). "plant": 3-6 leaves of one plant (POST /scans/plant); primary is the plant
+    # level, leaves the individual leaves.
+    kind: Literal["leaf", "plant"] = "leaf"
     status: Literal["ok", "no_leaf_detected"]
     primary: LeafCoverage | None
     leaves: list[LeafCoverage]
-    framing: Framing | None = None  # None for no leaf, and for scans saved before the check existed
+    framing: Framing | None = None  # None for no leaf, plant scans, and scans saved before the check existed
+    plant: PlantSummary | None = None
+    leaf_images: list[LeafImages] | None = None  # plant scans only
     # Null when there's no Cloud Storage bucket: the app shows its on-device copies instead.
     image_url: str | None = None
     overlay_url: str | None = None

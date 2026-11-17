@@ -11,7 +11,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from app import advice, local_storage, storage, weather
 from app.auth import get_current_uid
 from app.config import settings
-from app.coverage import compute_coverage, filter_predictions, main_leaf_keep_mask
+from app.coverage import aggregate_plant, compute_coverage, filter_predictions, main_leaf_keep_mask
 from app.inference import SegmentationModel
 from app.overlay import render_overlay
 from app.schemas import Advice, AdviceRequest, ScanResult
@@ -61,6 +61,15 @@ def load_image(data: bytes, crop: tuple[float, float, float, float] | None = Non
     return img
 
 
+def read_upload(image: UploadFile) -> bytes:
+    """The upload's bytes; 413 if over settings.max_upload_mb."""
+    limit = int(settings.max_upload_mb * 1024 * 1024)
+    data = image.file.read(limit + 1)
+    if len(data) > limit:
+        raise HTTPException(413, f"Image larger than {settings.max_upload_mb:g} MB")
+    return data
+
+
 ISOLATE_GREY = 114  # the letterbox grey the model already sees as "nothing here"
 
 
@@ -104,11 +113,7 @@ def create_scan(
     store: ModuleType = Depends(get_store),
 ):
     box = parse_crop(crop)  # validate before reading the upload
-    data = image.file.read(int(settings.max_upload_mb * 1024 * 1024) + 1)
-    if len(data) > settings.max_upload_mb * 1024 * 1024:
-        raise HTTPException(413, f"Image larger than {settings.max_upload_mb:g} MB")
-
-    img = load_image(data, box)
+    img = load_image(read_upload(image), box)
     pixels = np.asarray(img)
     predictions, result, shown = analyse(model, pixels)
     overlay_jpeg = render_overlay(shown, predictions)
@@ -122,6 +127,69 @@ def create_scan(
         **scan,
         "image_jpeg_b64": base64.b64encode(jpeg.getvalue()).decode(),
         "overlay_jpeg_b64": base64.b64encode(overlay_jpeg).decode(),
+    }
+
+
+def _worst(leaf: dict) -> float:
+    """How affected a leaf is: its diseased share of the area."""
+    return 100 - leaf["healthy_pct"]
+
+
+@router.post("/plant", response_model=ScanResult)
+def create_plant_scan(
+    images: list[UploadFile] = File(..., description="One photo per leaf: 3-6 different leaves of the same plant"),
+    crops: list[str] | None = Form(None, description="Box around the leaf per photo, same order: 'x0,y0,x1,y1'"),
+    uid: str = Depends(get_current_uid),
+    model: SegmentationModel = Depends(get_model),
+    store: ModuleType = Depends(get_store),
+):
+    """Whole-plant scan: each leaf is analysed like POST /scans, then combined (coverage.aggregate_plant).
+    Photos where no leaf is found are left out; 422 (detail.failed = their indexes) if fewer than
+    settings.plant_min_leaves leaves remain, so the app can ask for those photos again."""
+    lo, hi = settings.plant_min_leaves, settings.plant_max_leaves
+    if not lo <= len(images) <= hi:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Send {lo} to {hi} leaf photos, one leaf per photo")
+    if crops is not None and len(crops) != len(images):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Send one crop per photo")
+    boxes = [parse_crop(c) for c in crops] if crops is not None else [None] * len(images)
+
+    leaves, files, failed = [], {}, []
+    for i, (upload, box) in enumerate(zip(images, boxes)):
+        img = load_image(read_upload(upload), box)
+        pixels = np.asarray(img)
+        predictions, result, shown = analyse(model, pixels)
+        if result["status"] != "ok":
+            failed.append(i)
+            continue
+        jpeg = io.BytesIO()
+        img.save(jpeg, format="JPEG", quality=90)
+        files[i] = (jpeg.getvalue(), render_overlay(shown, predictions))
+        leaves.append({**result["primary"], "index": i, "framing": result["framing"]})
+
+    if len(leaves) < lo:
+        photos = ", ".join(str(i + 1) for i in failed)
+        raise HTTPException(
+            422,
+            {"message": f"No leaf found in photo {photos}. Retake {'it' if len(failed) == 1 else 'them'} "
+                        f"with one leaf filling the box (at least {lo} leaves are needed).",
+             "failed": failed},
+        )
+
+    combined = aggregate_plant(leaves)
+    combined["plant"]["skipped"] = failed
+    combined["plant"]["cover"] = max(leaves, key=_worst)["index"]
+    scan = store.save_plant_scan(uid, files, {**combined, "leaves": leaves}, model.version)
+    # The images go back to the app, which keeps them on the device (the only copy without Cloud Storage).
+    return {
+        **scan,
+        "leaf_images": [
+            {
+                "index": i,
+                "image_jpeg_b64": base64.b64encode(original).decode(),
+                "overlay_jpeg_b64": base64.b64encode(overlay).decode(),
+            }
+            for i, (original, overlay) in files.items()
+        ],
     }
 
 

@@ -8,6 +8,11 @@ import 'features/auth/auth_providers.dart';
 import 'features/auth/sign_in_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/history/scan_detail_screen.dart';
+import 'features/plant/plant_capture_screen.dart';
+import 'features/plant/plant_result_screen.dart';
+import 'features/profile/info_screens.dart';
+import 'features/profile/permissions_screen.dart';
+import 'features/profile/profile_screen.dart';
 import 'features/scan/result_screen.dart';
 import 'features/scan/scan_screen.dart';
 
@@ -38,6 +43,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const ScanScreen(),
         routes: [
           GoRoute(path: 'result', builder: (_, _) => const ResultScreen()),
+          GoRoute(path: 'plant', builder: (_, _) => const PlantCaptureScreen()),
+          GoRoute(path: 'plant-result', builder: (_, _) => const PlantResultScreen()),
+          GoRoute(
+            path: 'profile',
+            builder: (_, _) => const ProfileScreen(),
+            routes: [
+              GoRoute(path: 'permissions', builder: (_, _) => const PermissionsScreen()),
+              GoRoute(path: 'privacy', builder: (_, _) => const PrivacyPolicyScreen()),
+              GoRoute(path: 'guide', builder: (_, _) => const PhotoGuideScreen()),
+            ],
+          ),
           GoRoute(
             path: 'advice/:id',
             builder: (_, state) =>

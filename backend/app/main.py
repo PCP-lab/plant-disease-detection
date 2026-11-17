@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 from app.config import settings
 from app.inference import SegmentationModel
 from app.placeholder_model import ColorHeuristicModel
-from app.routes import forecast, scans
+from app.routes import account, forecast, scans
 
 log = logging.getLogger("uvicorn.error")
 
@@ -61,6 +61,7 @@ app.add_middleware(
 
 app.include_router(scans.router)
 app.include_router(forecast.router)
+app.include_router(account.router)
 
 @app.get("/files/{path:path}", include_in_schema=False)
 def local_file(path: str) -> FileResponse:

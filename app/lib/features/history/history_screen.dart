@@ -67,6 +67,13 @@ class _ScanTile extends StatelessWidget {
     final date =
         '${MaterialLocalizations.of(context).formatMediumDate(scan.createdAt)}, '
         '${TimeOfDay.fromDateTime(scan.createdAt).format(context)}';
+    // Whole-plant scans: the thumbnail is the most affected leaf.
+    final cover = scan.isPlant ? scan.plant?.cover : null;
+    final coverImages = scan.leafImagesAt(cover);
+    final coverage = primary == null
+        ? 'No leaf detected'
+        : '${scan.isPlant ? 'avg ' : ''}Mildew ${primary.powderyMildewPct.toStringAsFixed(1)}% · '
+              'Spot ${primary.leafSpotPct.toStringAsFixed(1)}%';
 
     return ListTile(
       onTap: () => context.push('/history/${scan.id}'),
@@ -77,19 +84,18 @@ class _ScanTile extends StatelessWidget {
           child: ScanImage(
             scanId: scan.id,
             kind: ScanImageKind.overlay,
-            storagePath: scan.overlayPath ?? scan.imagePath,
-            url: scan.overlayUrl ?? scan.imageUrl,
+            leafIndex: cover,
+            storagePath: coverImages?.overlayPath ?? scan.overlayPath ?? scan.imagePath,
+            url: coverImages?.overlayUrl ?? scan.overlayUrl ?? scan.imageUrl,
             fit: BoxFit.cover,
           ),
         ),
       ),
       title: Text(date),
       subtitle: Text(
-        primary == null
-            ? 'No leaf detected'
-            : 'Mildew ${primary.powderyMildewPct.toStringAsFixed(1)}% · '
-                  'Spot ${primary.leafSpotPct.toStringAsFixed(1)}%',
+        scan.isPlant ? 'Whole plant · ${scan.plant?.leavesAnalysed ?? scan.leaves.length} leaves\n$coverage' : coverage,
       ),
+      isThreeLine: scan.isPlant,
       trailing: primary == null
           ? null
           : SeverityChip(severity: primary.worstSeverity),

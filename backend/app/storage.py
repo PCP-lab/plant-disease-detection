@@ -49,14 +49,29 @@ def _to_response(scan_id: str, doc: dict) -> dict:
             "image_url": _download_url(bucket_name, doc["image_path"], tokens.get("image", "")),
             "overlay_url": _download_url(bucket_name, doc["overlay_path"], tokens.get("overlay", "")),
         }
+    leaf_images = None
+    if doc.get("kind") == "plant":
+        leaf_images = [
+            {
+                "index": leaf["index"],
+                "image_url": _download_url(_bucket().name, leaf["image_path"], leaf["tokens"]["image"]),
+                "overlay_url": _download_url(_bucket().name, leaf["overlay_path"], leaf["tokens"]["overlay"]),
+            }
+            if "image_path" in leaf
+            else {"index": leaf["index"]}
+            for leaf in doc.get("leaf_files", [])
+        ]
     return {
         "id": scan_id,
         "created_at": doc["created_at"],
         "model_version": doc.get("model_version", ""),
+        "kind": doc.get("kind", "leaf"),
         "status": doc["status"],
         "primary": doc.get("primary"),
         "leaves": doc.get("leaves", []),
         "framing": doc.get("framing"),  # absent on scans saved before the photo check
+        "plant": doc.get("plant"),
+        "leaf_images": leaf_images,
         **urls,
     }
 
@@ -86,6 +101,39 @@ def save_scan(uid: str, image_bytes: bytes, overlay_jpeg: bytes, result: dict, m
     return _to_response(ref.id, doc)
 
 
+def save_plant_scan(uid: str, images: dict[int, tuple[bytes, bytes]], result: dict, model_version: str) -> dict:
+    """Whole-plant scan. images: photo index → (original JPEG, overlay JPEG) for each analysed leaf.
+    result: {"primary", "leaves", "plant"} (aggregate_plant + per-leaf results). Returns the API response dict."""
+    ref = _scans(uid).document()
+    doc = {
+        "created_at": datetime.now(timezone.utc),
+        "model_version": model_version,
+        "kind": "plant",
+        "status": "ok",
+        "primary": result["primary"],
+        "leaves": result["leaves"],
+        "framing": None,
+        "plant": result["plant"],
+        "leaf_files": [{"index": i} for i in images],
+    }
+    if settings.use_cloud_storage:
+        bucket = _bucket()
+        for leaf in doc["leaf_files"]:
+            i = leaf["index"]
+            original, overlay = images[i]
+            leaf["image_path"] = f"scans/{uid}/{ref.id}/leaf_{i}_original.jpg"
+            leaf["overlay_path"] = f"scans/{uid}/{ref.id}/leaf_{i}_overlay.jpg"
+            leaf["tokens"] = {
+                "image": _upload(bucket, leaf["image_path"], original, "image/jpeg"),
+                "overlay": _upload(bucket, leaf["overlay_path"], overlay, "image/jpeg"),
+            }
+            if i == result["plant"]["cover"]:  # top-level image = the most affected leaf (older app builds show it)
+                doc["image_path"], doc["overlay_path"] = leaf["image_path"], leaf["overlay_path"]
+                doc["download_tokens"] = leaf["tokens"]
+    ref.set(doc)
+    return _to_response(ref.id, doc)
+
+
 def list_scans(uid: str, limit: int, cursor: str | None) -> list[dict] | None:
     """Newest first. cursor = id of the last scan of the previous page; None if that id doesn't exist."""
     col = _scans(uid)
@@ -109,14 +157,38 @@ def delete_scan(uid: str, scan_id: str) -> bool:
     snap = ref.get()
     if not snap.exists:
         return False
-    doc = snap.to_dict()
-    if "image_path" in doc:
-        bucket = _bucket()
-        for path in (doc.get("image_path"), doc.get("overlay_path")):
-            if path:
-                try:
-                    bucket.blob(path).delete()
-                except NotFound:
-                    pass
+    _delete_files(snap.to_dict())
     ref.delete()
     return True
+
+
+def _delete_files(doc: dict) -> None:
+    """Deletes a scan doc's images from Cloud Storage, if it has any (single leaf, or every leaf of a plant scan)."""
+    paths = {doc.get("image_path"), doc.get("overlay_path")}
+    for leaf in doc.get("leaf_files", []):
+        paths |= {leaf.get("image_path"), leaf.get("overlay_path")}
+    paths.discard(None)
+    if not paths:
+        return
+    bucket = _bucket()
+    for path in paths:
+        try:
+            bucket.blob(path).delete()
+        except NotFound:
+            pass
+
+
+def delete_all_scans(uid: str) -> int:
+    """Deletes every scan of the user (docs and images), e.g. for account deletion. Returns how many."""
+    col = _scans(uid)
+    deleted = 0
+    while True:
+        snaps = list(col.limit(400).stream())
+        if not snaps:
+            return deleted
+        batch = firestore.client().batch()
+        for snap in snaps:
+            _delete_files(snap.to_dict())
+            batch.delete(snap.reference)
+        batch.commit()
+        deleted += len(snaps)

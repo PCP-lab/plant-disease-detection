@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     severity_mild_max: float = 5.0
     severity_moderate_max: float = 25.0
 
+    # Whole-plant scans (POST /scans/plant): one photo per leaf, 3-6 different leaves of the same plant.
+    plant_min_leaves: int = 3
+    plant_max_leaves: int = 6
+    # A disease on at least this share of the leaves is spreading through the plant: its plant level goes up a step.
+    plant_spread_frac: float = 0.5
+    # A leaf counts as affected by a disease above this % (0 = any trace). Raise it if tiny false detections
+    # make diseases look widespread.
+    plant_affected_min_pct: float = 0.0
+
     # Photo check ("framing"): the model is validated on photos with one dominant leaf (training/15_combined_focal_test_report).
     # Warn when the main leaf covers less than this share of the photo...
     framing_min_leaf_frac: float = 0.15

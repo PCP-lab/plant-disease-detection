@@ -80,7 +80,7 @@ class _ScanResultViewState extends State<ScanResultView> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                if (!noLeaf) const _Legend(),
+                if (!noLeaf) const ScanLegend(),
                 const SizedBox(height: 16),
                 if (noLeaf)
                   Card(
@@ -98,7 +98,7 @@ class _ScanResultViewState extends State<ScanResultView> {
                   )
                 else ...[
                   if (scan.framing != null && !scan.framing!.ok)
-                    _FramingWarning(framing: scan.framing!),
+                    FramingWarning(framing: scan.framing!),
                   CoverageCard(coverage: scan.primary!),
                   Card(
                     clipBehavior: Clip.antiAlias,
@@ -140,8 +140,8 @@ class _ScanResultViewState extends State<ScanResultView> {
 }
 
 /// Shown when the photo isn't one dominant leaf, the kind of photo the model is validated on.
-class _FramingWarning extends StatelessWidget {
-  const _FramingWarning({required this.framing});
+class FramingWarning extends StatelessWidget {
+  const FramingWarning({super.key, required this.framing});
 
   final Framing framing;
 
@@ -194,8 +194,8 @@ class _Pill extends StatelessWidget {
   );
 }
 
-class _Legend extends StatelessWidget {
-  const _Legend();
+class ScanLegend extends StatelessWidget {
+  const ScanLegend({super.key});
 
   @override
   Widget build(BuildContext context) {

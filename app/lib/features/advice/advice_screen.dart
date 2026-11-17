@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/location.dart';
 import '../../shared/models/scan_result.dart';
 import '../history/history_providers.dart';
+import '../plant/plant_providers.dart';
 import '../scan/scan_providers.dart';
 import '../scan/widgets/coverage_card.dart';
 import 'widgets/advice_card.dart';
@@ -61,8 +62,11 @@ class _AdviceScreenState extends ConsumerState<AdviceScreen> {
 
     // The scan just uploaded is in memory (with its photo); otherwise load it like History does.
     final upload = ref.watch(scanUploadProvider)?.value;
+    final plantUpload = ref.watch(plantUploadProvider)?.value;
     final AsyncValue<ScanResult?> scan = upload?.id == scanId
         ? AsyncData(upload)
+        : plantUpload?.id == scanId
+        ? AsyncData(plantUpload)
         : ref.watch(scanByIdProvider(scanId));
 
     return Scaffold(
@@ -107,8 +111,11 @@ class _ScanSummary extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.eco),
-        title: const Text('This scan'),
+        title: Text(
+          scan.isPlant ? 'Whole plant · ${scan.plant?.leavesAnalysed ?? scan.leaves.length} leaves' : 'This scan',
+        ),
         subtitle: Text(
+          '${scan.isPlant ? 'Average: ' : ''}'
           'Mildew ${leaf.powderyMildewPct.toStringAsFixed(1)}% · '
           'Leaf spot ${leaf.leafSpotPct.toStringAsFixed(1)}% · '
           'Healthy ${leaf.healthyPct.toStringAsFixed(1)}%',

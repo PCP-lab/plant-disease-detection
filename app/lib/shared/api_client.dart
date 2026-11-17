@@ -54,14 +54,42 @@ class ApiClient {
         filename: image.name,
         contentType: DioMediaType.parse(image.mimeType ?? 'image/jpeg'),
       ),
-      if (crop != null)
-        'crop': [crop.left, crop.top, crop.right, crop.bottom]
-            .map((v) => v.clamp(0.0, 1.0).toStringAsFixed(4))
-            .join(','),
+      if (crop != null) 'crop': _cropField(crop),
     });
     final res = await _dio.post<Map<String, dynamic>>('/scans', data: form);
     return ScanResult.fromJson(res.data!);
   }
+
+  /// Whole-plant scan: one photo per leaf (3–6 different leaves of one plant), each with the box the user drew
+  /// around its leaf. A 422 means too few leaves were found; [failedPhotos] says which photos to retake.
+  Future<ScanResult> createPlantScan(List<(XFile, Rect)> leaves) async {
+    final form = FormData();
+    for (final (image, crop) in leaves) {
+      form.files.add(
+        MapEntry(
+          'images',
+          MultipartFile.fromBytes(
+            await image.readAsBytes(),
+            filename: image.name,
+            contentType: DioMediaType.parse(image.mimeType ?? 'image/jpeg'),
+          ),
+        ),
+      );
+      form.fields.add(MapEntry('crops', _cropField(crop)));
+    }
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/scans/plant',
+      data: form,
+      // Up to 6 leaves, two model passes each.
+      options: Options(receiveTimeout: const Duration(seconds: 150)),
+    );
+    return ScanResult.fromJson(res.data!);
+  }
+
+  static String _cropField(Rect crop) =>
+      [crop.left, crop.top, crop.right, crop.bottom]
+          .map((v) => v.clamp(0.0, 1.0).toStringAsFixed(4))
+          .join(',');
 
   /// Newest first. [cursor] is the id of the last scan of the previous page.
   Future<List<ScanResult>> listScans({int limit = 50, String? cursor}) async {
@@ -133,6 +161,19 @@ class ApiClient {
 
   /// Deletes the Firestore doc and any server-side images. The device copies are deleted separately.
   Future<void> deleteScan(String id) => _dio.delete<void>('/scans/$id');
+
+  /// Deletes the signed-in user's account: all their scans and their login. The device copies of the photos
+  /// are deleted separately.
+  Future<void> deleteAccount() => _dio.delete<void>('/account');
+}
+
+/// Whole-plant scans: the photo indexes (0-based) where no leaf was found, from a 422; null for other errors.
+List<int>? failedPhotos(Object error) {
+  if (error is! DioException || error.response?.statusCode != 422) return null;
+  final data = error.response?.data;
+  final detail = data is Map ? data['detail'] : null;
+  final failed = detail is Map ? detail['failed'] : null;
+  return failed is List ? [for (final i in failed) (i as num).toInt()] : null;
 }
 
 /// A message suitable for a snackbar.
@@ -144,6 +185,7 @@ String describeError(Object error) {
         : null;
     if (status == 401) return 'Your session expired. Please sign in again.';
     if (detail is String) return detail;
+    if (detail is Map && detail['message'] is String) return detail['message'] as String;
     if (status != null) return 'Server error ($status). Please try again.';
     return switch (error.type) {
       DioExceptionType.connectionTimeout ||

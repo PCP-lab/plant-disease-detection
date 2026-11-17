@@ -49,6 +49,9 @@ dependencies:
   hive_ce_flutter: ^2.5.0
   geolocator: ^14.0.2
   camera: ^0.12.2
+  permission_handler: ^13.0.2
+  url_launcher: ^6.3.3
+  package_info_plus: ^10.2.2
 
 dev_dependencies:
   flutter_test:
@@ -60,6 +63,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -71,6 +75,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/icon/icon.png # shown in Profile → About
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -102,3 +109,22 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# App icon: regenerate with `dart run flutter_launcher_icons` after changing assets/icon/.
+# icon.png = tight crop (iOS, web, older Android); icon_foreground.png = full canvas for Android
+# adaptive icons, which crop about 1/6 off each side themselves.
+flutter_launcher_icons:
+  image_path: assets/icon/icon.png
+  android: true
+  adaptive_icon_background: "#202C3C"
+  adaptive_icon_foreground: assets/icon/icon_foreground.png
+  # The foreground already has its own padding; the default 16% inset would shrink the leaf again.
+  adaptive_icon_foreground_inset: 0
+  min_sdk_android: 21
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: assets/icon/icon.png
+    background_color: "#202C3C"
+    theme_color: "#202C3C"

@@ -23,11 +23,15 @@ class ScanImage extends ConsumerWidget {
     this.bytes,
     this.url,
     this.storagePath,
+    this.leafIndex,
     this.fit = BoxFit.contain,
   });
 
   final String scanId;
   final ScanImageKind kind;
+
+  /// Whole-plant scans: which leaf photo; null for a single-leaf scan.
+  final int? leafIndex;
   final Uint8List? bytes;
   final String? url;
   final String? storagePath;
@@ -37,7 +41,7 @@ class ScanImage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (bytes != null) return _memory(context, bytes!);
     return ref
-        .watch(deviceImageProvider((scanId, kind)))
+        .watch(deviceImageProvider((scanId, kind, leafIndex)))
         .when(
           data: (local) =>
               local != null ? _memory(context, local) : _remote(context, ref),

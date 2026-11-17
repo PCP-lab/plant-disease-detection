@@ -24,7 +24,16 @@ def _scan_dir(uid: str, scan_id: str) -> Path | None:
 
 def _to_response(uid: str, scan_id: str, doc: dict) -> dict:
     base = f"/files/scans/{uid}/{scan_id}"
-    return {"id": scan_id, **doc, "image_url": f"{base}/original.jpg", "overlay_url": f"{base}/overlay.jpg"}
+    if doc.get("kind") != "plant":
+        return {"id": scan_id, **doc, "image_url": f"{base}/original.jpg", "overlay_url": f"{base}/overlay.jpg"}
+    leaf_images = [
+        {"index": i, "image_url": f"{base}/leaf_{i}_original.jpg", "overlay_url": f"{base}/leaf_{i}_overlay.jpg"}
+        for i in doc["leaf_files"]
+    ]
+    cover = next(img for img in leaf_images if img["index"] == doc["plant"]["cover"])
+    fields = {k: v for k, v in doc.items() if k != "leaf_files"}
+    return {"id": scan_id, **fields, "leaf_images": leaf_images,
+            "image_url": cover["image_url"], "overlay_url": cover["overlay_url"]}
 
 
 def _read(uid: str, scan_id: str) -> dict | None:
@@ -52,6 +61,29 @@ def save_scan(uid: str, image_bytes: bytes, overlay_jpeg: bytes, result: dict, m
     return _to_response(uid, scan_id, doc)
 
 
+def save_plant_scan(uid: str, images: dict[int, tuple[bytes, bytes]], result: dict, model_version: str) -> dict:
+    """Whole-plant scan; same arguments as app.storage.save_plant_scan."""
+    scan_id = uuid.uuid4().hex[:20]
+    d = _scan_dir(uid, scan_id)
+    d.mkdir(parents=True)
+    for i, (original, overlay) in images.items():
+        (d / f"leaf_{i}_original.jpg").write_bytes(original)
+        (d / f"leaf_{i}_overlay.jpg").write_bytes(overlay)
+    doc = {
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "model_version": model_version,
+        "kind": "plant",
+        "status": "ok",
+        "primary": result["primary"],
+        "leaves": result["leaves"],
+        "framing": None,
+        "plant": result["plant"],
+        "leaf_files": list(images),
+    }
+    (d / "scan.json").write_text(json.dumps(doc))
+    return _to_response(uid, scan_id, doc)
+
+
 def list_scans(uid: str, limit: int, cursor: str | None) -> list[dict] | None:
     docs = [(p.parent.name, json.loads(p.read_text())) for p in _user_dir(uid).glob("*/scan.json")]
     docs.sort(key=lambda item: item[1]["created_at"], reverse=True)
@@ -66,6 +98,14 @@ def list_scans(uid: str, limit: int, cursor: str | None) -> list[dict] | None:
 def get_scan(uid: str, scan_id: str) -> dict | None:
     doc = _read(uid, scan_id)
     return _to_response(uid, scan_id, doc) if doc else None
+
+
+def delete_all_scans(uid: str) -> int:
+    """Deletes every scan of the user. Returns how many."""
+    d = _user_dir(uid)
+    count = len(list(d.glob("*/scan.json")))
+    shutil.rmtree(d, ignore_errors=True)
+    return count
 
 
 def delete_scan(uid: str, scan_id: str) -> bool:

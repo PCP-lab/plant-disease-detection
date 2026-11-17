@@ -80,11 +80,13 @@ class FrameLeafScreen extends StatefulWidget {
     required this.bytes,
     this.initialBox = defaultLeafBox,
     this.retakeLabel = 'Retake',
+    this.confirmLabel = 'Analyze',
   });
 
   final Uint8List bytes;
   final Rect initialBox;
   final String retakeLabel;
+  final String confirmLabel;
 
   @override
   State<FrameLeafScreen> createState() => _FrameLeafScreenState();
@@ -198,7 +200,7 @@ class _FrameLeafScreenState extends State<FrameLeafScreen> {
                     child: FilledButton.icon(
                       onPressed: _imageSize == null ? null : () => Navigator.pop(context, _box),
                       icon: const Icon(Icons.check),
-                      label: const Text('Analyze'),
+                      label: Text(widget.confirmLabel),
                       style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
                     ),
                   ),

@@ -9,7 +9,9 @@ plugins {
 
 android {
     namespace = "com.pcpl.leaf_disease_app"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android needs to compile against SDK 37. Only the build SDK: minSdk/targetSdk (which
+    // devices can install it, and their runtime behaviour) are unchanged.
+    compileSdk = maxOf(flutter.compileSdkVersion, 37)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

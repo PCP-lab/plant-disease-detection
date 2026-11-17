@@ -1,85 +1,35 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../config.dart';
 import '../../shared/api_client.dart';
 import '../auth/auth_providers.dart';
-import 'camera_screen.dart';
-import 'frame_leaf_screen.dart';
+import '../profile/profile_screen.dart';
+import 'capture_leaf.dart';
 import 'scan_providers.dart';
 
-/// Home: take a photo or pick one from the gallery, then upload it.
+/// Home: choose a single-leaf scan (one photo → result) or a whole-plant scan (3–6 leaf photos → /plant).
 class ScanScreen extends ConsumerWidget {
   const ScanScreen({super.key});
 
-  Future<XFile?> _pick(BuildContext context, ImageSource source) async {
-    try {
-      return await ImagePicker().pickImage(
-        source: source,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 90,
-      );
-    } catch (e) {
-      if (context.mounted) {
-        _snack(context, 'Could not open the camera/gallery: $e');
-      }
-      return null;
+  /// Single leaf: photo (guided camera or gallery) → "box the leaf" → upload → result.
+  Future<void> _scan(BuildContext context, WidgetRef ref, {required bool camera}) async {
+    final leaf = await captureLeaf(context, camera: camera);
+    if (leaf == null || !context.mounted) return;
+    final result = await ref.read(scanUploadProvider.notifier).upload(leaf.file, crop: leaf.box);
+    if (!context.mounted) return;
+    if (result.hasError) {
+      _snack(context, describeError(result.error!));
+    } else {
+      context.push('/result');
     }
   }
 
-  /// Photo (in-app camera with a guide box on Android/iOS, else image_picker) → "box the leaf" → upload.
-  /// "Retake" on the box screen goes back to the camera / gallery.
-  Future<void> _scan(BuildContext context, WidgetRef ref, {required bool camera}) async {
-    final nav = Navigator.of(context);
-    while (true) {
-      XFile? image;
-      var start = defaultLeafBox;
-      if (camera && !kIsWeb) {
-        final out = await nav.push<CameraOutcome>(
-          MaterialPageRoute(builder: (_) => const CameraScreen()),
-        );
-        if (out == null || !context.mounted) return;
-        if (out.file != null) {
-          image = out.file;
-          start = out.guide!;
-        } else {
-          image = await _pick(
-            context,
-            out.fallback == CameraFallback.gallery ? ImageSource.gallery : ImageSource.camera,
-          );
-        }
-      } else {
-        image = await _pick(context, camera ? ImageSource.camera : ImageSource.gallery);
-      }
-      if (image == null || !context.mounted) return;
-
-      final bytes = await image.readAsBytes();
-      if (!context.mounted) return;
-      final box = await nav.push<Rect>(
-        MaterialPageRoute(
-          builder: (_) => FrameLeafScreen(
-            bytes: bytes,
-            initialBox: start,
-            retakeLabel: camera ? 'Retake' : 'Choose another',
-          ),
-        ),
-      );
-      if (!context.mounted) return;
-      if (box == null) continue; // retake / choose another
-
-      final result = await ref.read(scanUploadProvider.notifier).upload(image, crop: box);
-      if (!context.mounted) return;
-      if (result.hasError) {
-        _snack(context, describeError(result.error!));
-      } else {
-        context.push('/result');
-      }
-      return;
-    }
+  /// Single leaf: camera or gallery?
+  Future<void> _chooseSingleSource(BuildContext context, WidgetRef ref) async {
+    final camera = await showPhotoSourceSheet(context, title: 'Scan one leaf');
+    if (camera != null && context.mounted) await _scan(context, ref, camera: camera);
   }
 
   void _snack(BuildContext context, String message) =>
@@ -95,25 +45,19 @@ class ScanScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Leaf Disease Detector'),
+        title: const Text('CropCare'),
         actions: [
           IconButton(
             tooltip: 'History',
             icon: const Icon(Icons.history),
             onPressed: uploading ? null : () => context.push('/history'),
           ),
-          if (firebaseEnabled)
-            PopupMenuButton<String>(
-              enabled: !uploading,
-              onSelected: (value) {
-                if (value == 'sign-out') {
-                  ref.read(authServiceProvider).signOut();
-                }
-              },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
-              ],
-            ),
+          IconButton(
+            tooltip: 'Profile',
+            onPressed: uploading ? null : () => context.push('/profile'),
+            icon: ProfileAvatar(user: ref.watch(authStateProvider).value, radius: 15),
+          ),
+          const SizedBox(width: 4),
         ],
       ),
       body: SafeArea(
@@ -129,46 +73,45 @@ class ScanScreen extends ConsumerWidget {
                       children: [
                         Icon(
                           Icons.energy_savings_leaf_outlined,
-                          size: 96,
+                          size: 72,
                           color: theme.colorScheme.primary,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         Text(
-                          'Scan a leaf',
+                          'What would you like to check?',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.headlineSmall,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Photograph one leaf so it fills most of the frame, then fit the box '
-                          "around it. We'll measure how much of it is covered by powdery mildew "
-                          'and leaf spot.',
+                          'We measure how much of each leaf is covered by powdery mildew and leaf spot.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
-                        const SizedBox(height: 32),
-                        FilledButton.icon(
-                          onPressed: () => _scan(context, ref, camera: true),
-                          icon: const Icon(Icons.photo_camera),
-                          label: Text(
-                            kIsWeb ? 'Take or choose a photo' : 'Take a photo',
-                          ),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(52),
-                          ),
+                        const SizedBox(height: 24),
+                        _ModeCard(
+                          icon: Icons.eco_outlined,
+                          title: 'Single leaf',
+                          badge: '1 photo',
+                          description:
+                              "A quick check of one leaf. Best when you've spotted a problem on a "
+                              'specific leaf.',
+                          primary: true,
+                          onTap: () => _chooseSingleSource(context, ref),
                         ),
                         const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: () => _scan(context, ref, camera: false),
-                          icon: const Icon(Icons.photo_library_outlined),
-                          label: const Text('Choose from gallery'),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(52),
-                          ),
+                        _ModeCard(
+                          icon: Icons.local_florist_outlined,
+                          title: 'Whole plant',
+                          badge: '3–6 photos',
+                          description:
+                              'Photograph 3 to 6 different leaves of the same plant (top, middle and '
+                              'bottom). We combine them into an overall health check of the plant.',
+                          onTap: () => context.push('/plant'),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 24),
                         const _Tips(),
                         if (!firebaseEnabled) ...[
                           const SizedBox(height: 16),
@@ -183,6 +126,78 @@ class ScanScreen extends ConsumerWidget {
                       ],
                     ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One of the two scan options on the home screen.
+class _ModeCard extends StatelessWidget {
+  const _ModeCard({
+    required this.icon,
+    required this.title,
+    required this.badge,
+    required this.description,
+    required this.onTap,
+    this.primary = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String badge;
+  final String description;
+  final VoidCallback onTap;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final bg = primary ? scheme.primaryContainer : scheme.secondaryContainer;
+    final fg = primary ? scheme.onPrimaryContainer : scheme.onSecondaryContainer;
+    return Card(
+      color: bg,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 36, color: fg),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          title,
+                          style: theme.textTheme.titleMedium?.copyWith(color: fg, fontWeight: FontWeight.w600),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: fg.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(badge, style: theme.textTheme.labelSmall?.copyWith(color: fg)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(description, style: theme.textTheme.bodySmall?.copyWith(color: fg)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: fg),
+            ],
           ),
         ),
       ),

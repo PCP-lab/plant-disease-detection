@@ -129,6 +129,9 @@ Rules:
 - Use the disease-pressure levels to say whether the weather favours spread. Use week_outlook to name the days
   when risk peaks or rises, and to plan protectant sprays on good spray days just before high-risk days.
 - Leaf spot may be bacterial; if so, copper is the option and fungicides will not help.
+- If scan.whole_plant is true, several leaves of ONE plant were scanned: judge the whole plant from plant_average
+  and leaves_affected (a disease on most leaves is spreading through the plant). The summary talks about the plant,
+  not a single leaf.
 - BE BRIEF. The grower reads this on a phone. Plain words, no repetition between fields, no filler.
   * summary: ONE sentence, at most 15 words: what was found and whether the weather favours spread.
   * actions: at most 3, most urgent first, each at most 12 words, each a concrete thing to do (start with a verb).
@@ -148,9 +151,23 @@ def _diseases_present(scan: dict) -> list[str]:
     return [d for d in DISEASE_GUIDE if any(leaf["severity"].get(d, "none") != "none" for leaf in leaves)]
 
 
+def _coverage(leaf: dict) -> dict:
+    return {k: leaf[k] for k in ("powdery_mildew_pct", "leaf_spot_pct", "healthy_pct", "severity")}
+
+
 def _scan_report(scan: dict) -> dict:
     primary = scan["primary"]
     leaves = scan.get("leaves") or [primary]
+    if scan.get("kind") == "plant" and scan.get("plant"):
+        plant = scan["plant"]
+        return {
+            "whole_plant": True,
+            "leaves_analysed": plant["leaves_analysed"],
+            # Average over the leaves; a disease on many leaves is graded one step up (it's spreading).
+            "plant_average": _coverage(primary),
+            "leaves_affected": {d: f"{n} of {plant['leaves_analysed']}" for d, n in plant["leaves_affected"].items()},
+            "per_leaf": [{d: leaf[f"{d}_pct"] for d in DISEASE_GUIDE} for leaf in leaves],
+        }
     report = {
         "leaves_in_photo": len(leaves),
         "largest_leaf": {

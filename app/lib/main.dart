@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'config.dart';
+import 'features/profile/profile_providers.dart';
 import 'firebase_options.dart';
 import 'router.dart';
 import 'shared/device_images.dart';
@@ -17,12 +18,14 @@ Future<void> main() async {
       options.apiKey.isNotEmpty && options.projectId.isNotEmpty;
   if (firebaseEnabled) await Firebase.initializeApp(options: options);
   final deviceImages = await DeviceImages.open();
+  final settings = await SettingsStore.open();
 
   runApp(
     ProviderScope(
       overrides: [
         firebaseEnabledProvider.overrideWithValue(firebaseEnabled),
         deviceImagesProvider.overrideWithValue(deviceImages),
+        settingsStoreProvider.overrideWithValue(settings),
       ],
       child: const LeafDiseaseApp(),
     ),
@@ -41,10 +44,11 @@ class LeafDiseaseApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'Leaf Disease Detector',
+      title: 'CropCare',
       debugShowCheckedModeBanner: false,
       theme: _theme(Brightness.light),
       darkTheme: _theme(Brightness.dark),
+      themeMode: ref.watch(themeModeProvider),
       routerConfig: ref.watch(routerProvider),
     );
   }

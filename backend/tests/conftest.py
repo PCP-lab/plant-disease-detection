@@ -51,11 +51,29 @@ class FakeStorage:
         }
         return self.scans[scan_id]
 
+    def save_plant_scan(self, uid, images, result, model_version):
+        scan_id = f"scan{len(self.scans)}"
+        self.scans[scan_id] = {
+            "id": scan_id,
+            "created_at": datetime.now(timezone.utc),
+            "model_version": model_version,
+            "kind": "plant",
+            "status": "ok",
+            **result,
+            "leaf_images": [{"index": i} for i in images],
+        }
+        return self.scans[scan_id]
+
     def list_scans(self, uid, limit, cursor):
         return list(reversed(self.scans.values()))[:limit]
 
     def get_scan(self, uid, scan_id):
         return self.scans.get(scan_id)
+
+    def delete_all_scans(self, uid):
+        count = len(self.scans)
+        self.scans.clear()
+        return count
 
     def delete_scan(self, uid, scan_id):
         return self.scans.pop(scan_id, None) is not None

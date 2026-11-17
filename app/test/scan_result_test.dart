@@ -95,6 +95,85 @@ void main() {
     expect(scan.imageUrl, isNull);
   });
 
+  test('parses a whole-plant scan', () {
+    final scan = ScanResult.fromJson({
+      'id': 'p1',
+      'created_at': '2026-11-17T10:00:00Z',
+      'model_version': 'v2',
+      'kind': 'plant',
+      'status': 'ok',
+      'primary': {
+        'powdery_mildew_pct': 2.81,
+        'leaf_spot_pct': 0.54,
+        'healthy_pct': 96.67,
+        'severity': {'powdery_mildew': 'moderate', 'leaf_spot': 'moderate'},
+      },
+      'leaves': [
+        for (final i in [0, 2, 3])
+          {
+            'powdery_mildew_pct': 1.0 + i,
+            'leaf_spot_pct': 0.5,
+            'healthy_pct': 98.5 - i,
+            'severity': {'powdery_mildew': 'mild', 'leaf_spot': 'mild'},
+            'index': i,
+            'framing': {'ok': true, 'issue': null, 'leaf_frac': 0.5, 'dominance': null},
+          },
+      ],
+      'plant': {
+        'leaves_analysed': 3,
+        'leaves_affected': {'powdery_mildew': 3, 'leaf_spot': 3},
+        'spread': {'powdery_mildew': 1.0, 'leaf_spot': 1.0},
+        'raised': ['powdery_mildew', 'leaf_spot'],
+        'skipped': [1],
+        'cover': 3,
+      },
+      'leaf_images': [
+        for (final i in [0, 2, 3])
+          {'index': i, 'image_jpeg_b64': base64Encode([i]), 'overlay_jpeg_b64': base64Encode([i + 10])},
+      ],
+    });
+
+    expect(scan.isPlant, isTrue);
+    expect(scan.primary!.worstSeverity, Severity.moderate);
+    expect(scan.leaves.map((l) => l.index), [0, 2, 3]);
+    expect(scan.leaves.first.framing!.ok, isTrue);
+    expect(scan.plant!.leavesAffected['leaf_spot'], 3);
+    expect(scan.plant!.skipped, [1]);
+    expect(scan.plant!.cover, 3);
+    expect(scan.leafImagesAt(3)!.overlayBytes, [13]);
+    expect(scan.leafImagesAt(1), isNull);
+
+    // Scans saved before whole-plant scans existed are single-leaf scans.
+    expect(
+      ScanResult.fromJson({
+        'id': 'old',
+        'created_at': '2026-10-26T10:00:00Z',
+        'status': 'ok',
+        'primary': null,
+        'leaves': [],
+      }).isPlant,
+      isFalse,
+    );
+  });
+
+  test('device images keep whole-plant leaves apart and delete them all', () async {
+    final store = DeviceImages.inMemory();
+    for (final i in [0, 5]) {
+      await store.save(
+        'plant1',
+        original: Uint8List.fromList([i]),
+        overlay: Uint8List.fromList([i + 10]),
+        leafIndex: i,
+      );
+    }
+    expect(await store.read('plant1', ScanImageKind.overlay, leafIndex: 5), [15]);
+    expect(await store.read('plant1', ScanImageKind.overlay), isNull);
+
+    await store.delete('plant1');
+    expect(await store.read('plant1', ScanImageKind.original, leafIndex: 0), isNull);
+    expect(await store.read('plant1', ScanImageKind.original, leafIndex: 5), isNull);
+  });
+
   test('device images round trip', () async {
     final store = DeviceImages.inMemory();
     await store.save(

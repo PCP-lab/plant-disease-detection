@@ -1,19 +1,15 @@
-// Build-time settings, passed with `--dart-define=NAME=value`.
-// Everything except the API URL is left blank here and filled in per deployment.
+// Build-time settings, passed with `--dart-define=NAME=value`. The API URL and the Android sign-in client ID
+// default to the shared AWS deployment, so a plain `flutter run` works; override them per build as needed.
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-const _apiBaseUrlOverride = String.fromEnvironment('API_BASE_URL');
+/// The shared backend on AWS (EC2 + Caddy HTTPS).
+const cloudApiBaseUrl = 'https://3-149-87-65.sslip.io';
 
-/// Backend base URL: `--dart-define=API_BASE_URL=https://<cloud-run-url>`.
-/// Defaults to the dev machine: 10.0.2.2 is the host as seen from the Android emulator.
-String get apiBaseUrl {
-  if (_apiBaseUrlOverride.isNotEmpty) return _apiBaseUrlOverride;
-  final androidEmulator =
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-  return androidEmulator ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
-}
+/// Backend base URL. Defaults to the AWS backend ([cloudApiBaseUrl]). To use a backend on this PC instead:
+/// `--dart-define=API_BASE_URL=http://10.0.2.2:8000` (Android emulator: 10.0.2.2 is the PC) or
+/// `--dart-define=API_BASE_URL=http://localhost:8000` (web / desktop).
+const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: cloudApiBaseUrl);
 
 /// True once lib/firebase_options.dart is filled in (see main.dart). When false the app runs in
 /// prototype mode: no sign-in, and history comes from the backend API instead of Firestore.
@@ -25,4 +21,8 @@ const googleIosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
 
 /// OAuth *web* client ID of the Firebase project (Firebase console → Authentication →
 /// Sign-in method → Google → Web SDK configuration). Needed for Google sign-in on Android.
-const googleServerClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
+/// Defaults to the leaf-dis-seg project's (public: it's also in android/app/google-services.json).
+const googleServerClientId = String.fromEnvironment(
+  'GOOGLE_SERVER_CLIENT_ID',
+  defaultValue: '636095579619-99mbhvrvi4j7f4kafj8en0eib1gjk6et.apps.googleusercontent.com',
+);

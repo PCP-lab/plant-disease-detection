@@ -5,8 +5,10 @@
          or on an emulator) there'd be no fix. Declaring FINE lets the user pick precise or approximate. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <!-- The guided in-app camera (the camera plugin also declares it; stated here for the permissions screen). -->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <application
-        android:label="leaf_disease_app"
+        android:label="CropCare"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -46,6 +48,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Profile → Send feedback opens the email app (url_launcher needs to see it on Android 11+). -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+            <data android:scheme="mailto"/>
         </intent>
     </queries>
 </manifest>

@@ -33,15 +33,18 @@ class _AdviceCardState extends ConsumerState<AdviceCard> {
     super.dispose();
   }
 
-  /// The scan's original photo: fresh upload → copy on this device → server URL. Null if none.
+  /// The scan's original photo (whole-plant scans: the most affected leaf's): fresh upload → copy on this
+  /// device → server URL. Null if none.
   Future<Uint8List?> _originalPhoto(ApiClient api) async {
     final scan = widget.scan;
-    if (scan.imageBytes != null) return scan.imageBytes;
+    final leafIndex = scan.isPlant ? scan.plant?.cover : null;
+    final fresh = scan.isPlant ? scan.leafImagesAt(leafIndex)?.imageBytes : scan.imageBytes;
+    if (fresh != null) return fresh;
     final onDevice = await ref
         .read(deviceImagesProvider)
-        .read(scan.id, ScanImageKind.original);
+        .read(scan.id, ScanImageKind.original, leafIndex: leafIndex);
     if (onDevice != null) return onDevice;
-    final url = scan.imageUrl;
+    final url = scan.isPlant ? scan.leafImagesAt(leafIndex)?.imageUrl ?? scan.imageUrl : scan.imageUrl;
     return url == null ? null : api.downloadImage(url);
   }
 

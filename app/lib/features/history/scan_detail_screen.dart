@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../shared/api_client.dart';
 import '../../shared/device_images.dart';
+import '../plant/widgets/plant_result_view.dart';
 import '../scan/widgets/scan_result_view.dart';
 import 'history_providers.dart';
 
@@ -26,7 +27,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Delete this scan?'),
         content: const Text(
-          'The photo and its result will be removed permanently.',
+          'The photos and the result will be removed permanently.',
         ),
         actions: [
           TextButton(
@@ -66,7 +67,7 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan'),
+        title: Text(scan.value?.isPlant ?? false ? 'Plant scan' : 'Scan'),
         actions: [
           if (scan.value != null)
             _deleting
@@ -89,6 +90,8 @@ class _ScanDetailScreenState extends ConsumerState<ScanDetailScreen> {
         error: (e, _) => Center(child: Text('Could not load this scan.\n$e')),
         data: (scan) => scan == null
             ? const Center(child: Text('This scan no longer exists.'))
+            : scan.isPlant
+            ? PlantResultView(scan: scan)
             : ScanResultView(scan: scan),
       ),
     );
